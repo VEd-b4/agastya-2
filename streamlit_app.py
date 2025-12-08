@@ -40,8 +40,11 @@ def clean_and_process_data(df):
     has_any_post = df[post_questions].notna().any(axis=1)
     remove_condition_2 = all_pre_null & has_any_post
     
-    # Remove rows that meet either condition
-    df = df[~(remove_condition_1 | remove_condition_2)]
+    # Condition 3: Remove rows where BOTH pre and post are all NULL
+    remove_condition_3 = all_pre_null & all_post_null
+    
+    # Remove rows that meet any of the conditions
+    df = df[~(remove_condition_1 | remove_condition_2 | remove_condition_3)]
     
     cleaned_count = len(df)
     
