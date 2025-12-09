@@ -67,9 +67,9 @@ def clean_and_process_data(df):
     # ===== STEP 3: STANDARDIZE PROGRAM TYPES =====
     
     # Create a mapping for program types
+    # CHANGE 1: SC and SC2 are excluded from mapping to keep their original values
+    # SCB, SCC, SCM, SCP are combined into PCMB
     program_type_mapping = {
-        'SC': 'PCMB',
-        'SC2': 'PCMB',
         'SCB': 'PCMB',
         'SCC': 'PCMB',
         'SCM': 'PCMB',
@@ -165,23 +165,38 @@ if uploaded_file is not None:
     # ===== KEY METRICS =====
     st.markdown("---")
     st.subheader("📊 Key Performance Metrics")
-    col1, col2, col3, col4 = st.columns(4)
+    
+    # CHANGE 3: Expanded columns to include Max and Min tests
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     
     with col1:
         avg_pre = (filtered_df['Pre_Score'].mean() / 5) * 100
-        st.metric("Avg Pre-Session Score", f"{avg_pre:.1f}%")
+        st.metric("Avg Pre Score", f"{avg_pre:.1f}%")
     
     with col2:
         avg_post = (filtered_df['Post_Score'].mean() / 5) * 100
-        st.metric("Avg Post-Session Score", f"{avg_post:.1f}%")
+        st.metric("Avg Post Score", f"{avg_post:.1f}%")
     
     with col3:
         improvement = avg_post - avg_pre
-        st.metric("Overall Improvement", f"{improvement:.1f}%", delta=f"{improvement:.1f}%")
+        st.metric("Improvement", f"{improvement:.1f}%", delta=f"{improvement:.1f}%")
     
     with col4:
+        # Calculate unique students for correct averaging
+        unique_students = filtered_df.drop_duplicates(subset=['Student Id'])
+        # Or using the Test_Count column (which is per student)
         avg_tests = filtered_df['Test_Count'].mean()
-        st.metric("Avg Tests per Student", f"{avg_tests:.1f}")
+        st.metric("Avg Tests/Student", f"{avg_tests:.1f}")
+
+    with col5:
+        # CHANGE 3: Added Max Tests
+        max_tests = filtered_df['Test_Count'].max() if not filtered_df.empty else 0
+        st.metric("Max Tests/Student", f"{max_tests}")
+
+    with col6:
+        # CHANGE 3: Added Min Tests
+        min_tests = filtered_df['Test_Count'].min() if not filtered_df.empty else 0
+        st.metric("Min Tests/Student", f"{min_tests}")
     
     # ===== TABS FOR DIFFERENT ANALYSES =====
     st.markdown("---")
@@ -391,22 +406,25 @@ if uploaded_file is not None:
         st.markdown("---")
         st.subheader("📋 Complete Instructor List - Assessment Count")
         
+        # CHANGE 2: Added Instructor Login Id to groupby
         # Calculate number of assessments (Content Id) per instructor
-        all_instructors = filtered_df.groupby('Instructor Name').agg({
+        all_instructors = filtered_df.groupby(['Instructor Name', 'Instructor Login Id']).agg({
             'Content Id': 'nunique',
             'Student Id': 'count',
             'Region': lambda x: x.mode()[0] if not x.mode().empty else x.iloc[0]  # Most common region
         }).reset_index()
         
-        all_instructors.columns = ['Instructor Name', 'Number of Assessments', 'Total Students', 'Primary Region']
+        all_instructors.columns = ['Instructor Name', 'Instructor Login Id', 'Number of Assessments', 'Total Students', 'Primary Region']
         all_instructors = all_instructors.sort_values('Number of Assessments', ascending=False)
         
-        # Add search functionality
-        search_instructor = st.text_input("🔍 Search for an instructor", "")
+        # CHANGE 2: Updated search functionality to include Instructor Login Id
+        search_instructor = st.text_input("🔍 Search for an instructor (Name or ID)", "")
         
         if search_instructor:
+            # Check if search term is in Name OR in ID (converted to string)
             filtered_instructors = all_instructors[
-                all_instructors['Instructor Name'].str.contains(search_instructor, case=False, na=False)
+                all_instructors['Instructor Name'].str.contains(search_instructor, case=False, na=False) |
+                all_instructors['Instructor Login Id'].astype(str).str.contains(search_instructor, case=False, na=False)
             ]
         else:
             filtered_instructors = all_instructors
@@ -790,6 +808,7 @@ else:
     - `Student Id` - Unique student identifier
     - `Class` - Class with section (e.g., 6-A, 7-B)
     - `Instructor Name` - Name of instructor
+    - `Instructor Login Id` - Login ID of instructor
     - `Program Type` - Program type code
     
     **Pre-Session (Questions & Answers):**
