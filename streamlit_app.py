@@ -387,6 +387,56 @@ if uploaded_file is not None:
             best_adapt['Improvement %'] = best_adapt['Improvement %'].apply(lambda x: f"{x:.1f}%")
             st.dataframe(best_adapt, hide_index=True, use_container_width=True)
         
+        # All Instructors Assessment Count
+        st.markdown("---")
+        st.subheader("📋 Complete Instructor List - Assessment Count")
+        
+        # Calculate number of assessments (Content Id) per instructor
+        all_instructors = filtered_df.groupby('Instructor Name').agg({
+            'Content Id': 'nunique',
+            'Student Id': 'count',
+            'Region': lambda x: x.mode()[0] if not x.mode().empty else x.iloc[0]  # Most common region
+        }).reset_index()
+        
+        all_instructors.columns = ['Instructor Name', 'Number of Assessments', 'Total Students', 'Primary Region']
+        all_instructors = all_instructors.sort_values('Number of Assessments', ascending=False)
+        
+        # Add search functionality
+        search_instructor = st.text_input("🔍 Search for an instructor", "")
+        
+        if search_instructor:
+            filtered_instructors = all_instructors[
+                all_instructors['Instructor Name'].str.contains(search_instructor, case=False, na=False)
+            ]
+        else:
+            filtered_instructors = all_instructors
+        
+        # Display summary metrics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Instructors", len(all_instructors))
+        with col2:
+            st.metric("Avg Assessments per Instructor", f"{all_instructors['Number of Assessments'].mean():.1f}")
+        with col3:
+            st.metric("Max Assessments by One Instructor", all_instructors['Number of Assessments'].max())
+        
+        # Display the full table
+        st.dataframe(
+            filtered_instructors,
+            hide_index=True,
+            use_container_width=True,
+            height=400
+        )
+        
+        # Download option for instructor assessment data
+        instructor_csv = all_instructors.to_csv(index=False)
+        st.download_button(
+            "📥 Download Complete Instructor Assessment List",
+            instructor_csv,
+            "instructor_assessments.csv",
+            "text/csv"
+        )
+        
         # Instructors per Region
         st.markdown("---")
         st.subheader("👥 Number of Instructors per Region")
