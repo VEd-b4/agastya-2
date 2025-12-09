@@ -67,7 +67,6 @@ def clean_and_process_data(df):
     # ===== STEP 3: STANDARDIZE PROGRAM TYPES =====
     
     # Create a mapping for program types
-    # CHANGE 1: SC and SC2 are excluded from mapping to keep their original values
     # SCB, SCC, SCM, SCP are combined into PCMB
     program_type_mapping = {
         'SCB': 'PCMB',
@@ -166,7 +165,6 @@ if uploaded_file is not None:
     st.markdown("---")
     st.subheader("📊 Key Performance Metrics")
     
-    # CHANGE 3: Expanded columns to include Max and Min tests
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     
     with col1:
@@ -182,25 +180,22 @@ if uploaded_file is not None:
         st.metric("Improvement", f"{improvement:.1f}%", delta=f"{improvement:.1f}%")
     
     with col4:
-        # Calculate unique students for correct averaging
-        unique_students = filtered_df.drop_duplicates(subset=['Student Id'])
-        # Or using the Test_Count column (which is per student)
+        # Calculate avg tests per student
         avg_tests = filtered_df['Test_Count'].mean()
         st.metric("Avg Tests/Student", f"{avg_tests:.1f}")
 
     with col5:
-        # CHANGE 3: Added Max Tests
         max_tests = filtered_df['Test_Count'].max() if not filtered_df.empty else 0
         st.metric("Max Tests/Student", f"{max_tests}")
 
     with col6:
-        # CHANGE 3: Added Min Tests
         min_tests = filtered_df['Test_Count'].min() if not filtered_df.empty else 0
         st.metric("Min Tests/Student", f"{min_tests}")
     
     # ===== TABS FOR DIFFERENT ANALYSES =====
     st.markdown("---")
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📍 Region Analysis", "👤 Instructor Analysis", "📚 Grade Analysis", "📊 Program Type Analysis", "👥 Student Participation"])
+    # Added "🏫 School Analysis" to the tabs
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📍 Region Analysis", "👤 Instructor Analysis", "📚 Grade Analysis", "📊 Program Type Analysis", "👥 Student Participation", "🏫 School Analysis"])
     
     # ===== TAB 1: REGION ANALYSIS =====
     with tab1:
@@ -406,7 +401,6 @@ if uploaded_file is not None:
         st.markdown("---")
         st.subheader("📋 Complete Instructor List - Assessment Count")
         
-        # CHANGE 2: Added Instructor Login Id to groupby
         # Calculate number of assessments (Content Id) per instructor
         all_instructors = filtered_df.groupby(['Instructor Name', 'Instructor Login Id']).agg({
             'Content Id': 'nunique',
@@ -417,11 +411,10 @@ if uploaded_file is not None:
         all_instructors.columns = ['Instructor Name', 'Instructor Login Id', 'Number of Assessments', 'Total Students', 'Primary Region']
         all_instructors = all_instructors.sort_values('Number of Assessments', ascending=False)
         
-        # CHANGE 2: Updated search functionality to include Instructor Login Id
+        # Search functionality
         search_instructor = st.text_input("🔍 Search for an instructor (Name or ID)", "")
         
         if search_instructor:
-            # Check if search term is in Name OR in ID (converted to string)
             filtered_instructors = all_instructors[
                 all_instructors['Instructor Name'].str.contains(search_instructor, case=False, na=False) |
                 all_instructors['Instructor Login Id'].astype(str).str.contains(search_instructor, case=False, na=False)
@@ -776,12 +769,111 @@ if uploaded_file is not None:
         with col3:
             program_csv = students_per_program.to_csv(index=False)
             st.download_button("Download Program Data", program_csv, "students_per_program.csv", "text/csv")
+
+    # ===== TAB 6: SCHOOL ANALYSIS (NEW) =====
+    with tab6:
+        st.header("School Analysis")
+        st.markdown("### School Performance and Engagement Metrics")
+
+        try:
+            # Group by School Name and UDISE to get unique schools
+            # Calculate metrics per school
+            school_stats = filtered_df.groupby(['School Name', 'UDISE']).agg({
+                'Student Id': 'nunique',        # Number of students
+                'Content Id': 'nunique',        # Number of unique assessments
+                'Instructor Login Id': 'nunique', # Number of instructors
+                'Region': 'first'               # Region (assuming 1 region per school)
+            }).reset_index()
+            
+            school_stats.columns = ['School Name', 'UDISE', 'Total Students', 'Unique Assessments', 'Total Instructors', 'Region']
+            
+            # Key Metrics
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Total Schools", len(school_stats))
+            
+            with col2:
+                avg_students = school_stats['Total Students'].mean()
+                st.metric("Avg Students/School", f"{avg_students:.1f}")
+                
+            with col3:
+                avg_assessments = school_stats['Unique Assessments'].mean()
+                st.metric("Avg Assessments/School", f"{avg_assessments:.1f}")
+                
+            with col4:
+                avg_instructors = school_stats['Total Instructors'].mean()
+                st.metric("Avg Instructors/School", f"{avg_instructors:.1f}")
+            
+            st.markdown("---")
+            
+            # School List Table
+            st.subheader("🏫 Detailed School List")
+            
+            # Search filter for schools
+            search_school = st.text_input("🔍 Search School (Name or UDISE)", "")
+            if search_school:
+                display_schools = school_stats[
+                    school_stats['School Name'].str.contains(search_school, case=False, na=False) |
+                    school_stats['UDISE'].astype(str).str.contains(search_school, case=False, na=False)
+                ]
+            else:
+                display_schools = school_stats
+                
+            st.dataframe(display_schools, hide_index=True, use_container_width=True)
+            
+            # Download button for school data
+            school_csv = school_stats.to_csv(index=False)
+            st.download_button(
+                "📥 Download School Analysis Data", 
+                school_csv, 
+                "school_analysis.csv", 
+                "text/csv"
+            )
+            
+            st.markdown("---")
+            
+            # Graph: Number of Schools per Region
+            st.subheader("📊 Number of Schools per Region")
+            
+            schools_per_region = school_stats.groupby('Region')['School Name'].count().reset_index()
+            schools_per_region.columns = ['Region', 'Number of Schools']
+            schools_per_region = schools_per_region.sort_values('Number of Schools', ascending=False)
+            
+            fig_schools = go.Figure()
+            fig_schools.add_trace(go.Bar(
+                x=schools_per_region['Region'],
+                y=schools_per_region['Number of Schools'],
+                marker_color='#8e44ad',
+                text=schools_per_region['Number of Schools'],
+                textposition='outside',
+                textfont=dict(size=14, color='white')
+            ))
+            
+            fig_schools.update_layout(
+                title='Count of Unique Schools by Region',
+                xaxis_title='Region',
+                yaxis_title='Number of Schools',
+                height=450,
+                plot_bgcolor='#2b2b2b',
+                paper_bgcolor='#1e1e1e',
+                font=dict(color='white'),
+                yaxis=dict(gridcolor='#404040'),
+                xaxis=dict(gridcolor='#404040')
+            )
+            
+            st.plotly_chart(fig_schools, use_container_width=True)
+            
+        except KeyError as e:
+            st.error(f"Missing required columns for School Analysis: {e}")
+            st.warning("Please ensure your Excel file contains 'School Name' and 'UDISE' columns.")
+
     
     # ===== DOWNLOAD SECTION =====
     st.markdown("---")
     st.subheader("📥 Download Analysis Reports")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         region_csv = region_stats.to_csv(index=False)
@@ -795,6 +887,12 @@ if uploaded_file is not None:
         grade_csv = grade_stats.to_csv(index=False)
         st.download_button("Download Grade Analysis", grade_csv, "grade_analysis.csv", "text/csv")
 
+    with col4:
+        # Check if school_stats exists (it's created inside the tab)
+        if 'school_stats' in locals():
+            school_csv = school_stats.to_csv(index=False)
+            st.download_button("Download School Analysis", school_csv, "school_analysis_summary.csv", "text/csv")
+
 else:
     st.info("👆 Please upload your student data Excel file to begin")
     
@@ -805,11 +903,14 @@ else:
     
     **Identification Columns:**
     - `Region` - Geographic region
+    - `School Name` - Name of the school
+    - `UDISE` - School unique ID
     - `Student Id` - Unique student identifier
     - `Class` - Class with section (e.g., 6-A, 7-B)
     - `Instructor Name` - Name of instructor
     - `Instructor Login Id` - Login ID of instructor
     - `Program Type` - Program type code
+    - `Content Id` - Assessment/Content Identifier
     
     **Pre-Session (Questions & Answers):**
     - `Q1`, `Q2`, `Q3`, `Q4`, `Q5` - Student responses
