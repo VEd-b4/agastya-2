@@ -575,10 +575,11 @@ if uploaded_file is not None:
         display_stats['Improvement %'] = display_stats['Improvement %'].apply(lambda x: f"{x:.1f}%")
         st.dataframe(display_stats, hide_index=True, use_container_width=True)
     
-    # ===== TAB 4: PROGRAM TYPE ANALYSIS =====
+    # ===== TAB 4: PROGRAM TYPE ANALYSIS (UPDATED) =====
     with tab4:
         st.header("Program Type Performance Analysis")
         
+        # 1. Overall Program Type Performance (Existing)
         program_stats = filtered_df.groupby('Program Type').agg({
             'Pre_Score': 'mean',
             'Post_Score': 'mean',
@@ -610,7 +611,7 @@ if uploaded_file is not None:
         ))
         
         fig.update_layout(
-            title='Program Type Performance Comparison',
+            title='Program Type Performance Comparison (All Regions)',
             xaxis_title='Program Type',
             yaxis_title='Average Score (%)',
             barmode='group',
@@ -623,8 +624,71 @@ if uploaded_file is not None:
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # Program stats table
-        st.subheader("Program Type Statistics")
+        # 2. NEW ADDITION: Program Analysis by Region
+        st.markdown("---")
+        st.subheader("Program Analysis by Region")
+        
+        # Group by Program Type AND Region
+        program_region_stats = filtered_df.groupby(['Program Type', 'Region']).agg({
+            'Pre_Score': 'mean',
+            'Post_Score': 'mean'
+        }).reset_index()
+        
+        # Calculate percentages
+        program_region_stats['Pre_Score_Pct'] = (program_region_stats['Pre_Score'] / 5) * 100
+        program_region_stats['Post_Score_Pct'] = (program_region_stats['Post_Score'] / 5) * 100
+        
+        # Get list of unique regions in the filtered data
+        unique_regions_in_data = sorted(filtered_df['Region'].unique())
+
+        # Selectbox to choose Region
+        selected_region_for_prog = st.selectbox("Select Region to compare Programs", 
+                                             unique_regions_in_data)
+        
+        # Filter data based on selection
+        region_data = program_region_stats[program_region_stats['Region'] == selected_region_for_prog]
+        
+        # Create Line/Marker Chart (Similar to Tab 1 style)
+        fig_prog_region = go.Figure()
+        
+        fig_prog_region.add_trace(go.Scatter(
+            x=region_data['Program Type'],
+            y=region_data['Pre_Score_Pct'],
+            mode='lines+markers+text',
+            name='Pre-Session',
+            line=dict(color='#1abc9c', width=3),
+            marker=dict(size=10),
+            text=[f"{val:.0f}%" for val in region_data['Pre_Score_Pct']],
+            textposition='top center'
+        ))
+        
+        fig_prog_region.add_trace(go.Scatter(
+            x=region_data['Program Type'],
+            y=region_data['Post_Score_Pct'],
+            mode='lines+markers+text',
+            name='Post-Session',
+            line=dict(color='#e67e22', width=3),
+            marker=dict(size=10),
+            text=[f"{val:.0f}%" for val in region_data['Post_Score_Pct']],
+            textposition='top center'
+        ))
+        
+        fig_prog_region.update_layout(
+            title=f'Program Performance in {selected_region_for_prog}',
+            xaxis_title='Program Type',
+            yaxis_title='Average Score (%)',
+            height=450,
+            plot_bgcolor='#2b2b2b',
+            paper_bgcolor='#1e1e1e',
+            font=dict(color='white'),
+            yaxis=dict(range=[0, 110], gridcolor='#404040'),
+            xaxis=dict(gridcolor='#404040')
+        )
+        
+        st.plotly_chart(fig_prog_region, use_container_width=True)
+        
+        # 3. Program stats table (Existing)
+        st.subheader("Detailed Program Type Statistics")
         display_prog = program_stats.copy()
         display_prog.columns = ['Program', 'Pre Score', 'Post Score', 'Students', 'Pre %', 'Post %', 'Improvement %']
         display_prog = display_prog[['Program', 'Pre %', 'Post %', 'Improvement %', 'Students']]
