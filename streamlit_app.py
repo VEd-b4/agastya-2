@@ -401,12 +401,22 @@ if uploaded_file is not None:
         st.markdown("---")
         st.subheader("📋 Complete Instructor List - Assessment Count")
         
-        # Calculate number of assessments (Content Id) per instructor
+        # FIX START: Generate a unique session key to correctly count assessments
+        # Previous logic only counted unique Content IDs. 
+        # New logic counts unique combinations of Content, Class, and School (An "Assessment Event")
+        filtered_df['Assessment_Session_Key'] = (
+            filtered_df['Content Id'].astype(str) + '_' + 
+            filtered_df['Class'].astype(str) + '_' + 
+            filtered_df['School Name'].fillna('NA').astype(str)
+        )
+        
+        # Calculate number of assessments (using the session key) per instructor
         all_instructors = filtered_df.groupby(['Instructor Name', 'Instructor Login Id']).agg({
-            'Content Id': 'nunique',
+            'Assessment_Session_Key': 'nunique', # This correctly counts distinct sessions
             'Student Id': 'count',
             'Region': lambda x: x.mode()[0] if not x.mode().empty else x.iloc[0]  # Most common region
         }).reset_index()
+        # FIX END
         
         all_instructors.columns = ['Instructor Name', 'Instructor Login Id', 'Number of Assessments', 'Total Students', 'Primary Region']
         all_instructors = all_instructors.sort_values('Number of Assessments', ascending=False)
