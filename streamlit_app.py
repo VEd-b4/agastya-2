@@ -9,8 +9,6 @@ from plotly.subplots import make_subplots
 st.set_page_config(page_title="Student Assessment Dashboard", layout="wide", page_icon="📊")
 
 # ===== DATA CLEANING FUNCTIONS (UNCHANGED) =====
-# ... (Keep the clean_and_process_data function as is) ...
-
 def clean_and_process_data(df):
     """
     Clean and process student assessment data
@@ -88,7 +86,7 @@ def clean_and_process_data(df):
     
     return df, initial_count, cleaned_count
 
-# ===== NEW FUNCTION: SUBJECT ANALYSIS TAB (MODIFIED FOR REGION ANALYSIS) =====
+# ===== TAB 8: SUBJECT ANALYSIS (MODIFIED) =====
 def tab8_subject_analysis(df):
     """
     Generates the Subject-wise Performance and Participation Analysis, 
@@ -116,7 +114,7 @@ def tab8_subject_analysis(df):
     subject_stats['Avg Post Score %'] = (subject_stats['Avg_Post_Score_Raw'] / 5) * 100
     subject_stats['Improvement %'] = subject_stats['Avg Post Score %'] - subject_stats['Avg Pre Score %']
     
-    # MODIFIED: Sort in ascending order of Post Score %
+    # Sort in ascending order of Post Score %
     subject_stats = subject_stats.sort_values('Avg Post Score %', ascending=True)
     
     # --- Visualization: Performance (Overall) ---
@@ -330,7 +328,7 @@ def tab8_subject_analysis(df):
     
     return subject_stats # Return for use in the main download section
 
-# ===== MAIN APPLICATION (MODIFIED FOR NEW TAB) =====
+# ===== MAIN APPLICATION (MODIFIED TO FIX ERRORS) =====
 
 # Title and description
 st.title("📊 Student Assessment Analysis Platform")
@@ -346,9 +344,9 @@ if uploaded_file is not None:
         try:
             raw_df = pd.read_excel(uploaded_file)
             
-            # Basic checks for required columns
-            required_cols = ['Date_Post', 'Donor', 'Subject']
-            missing_cols = [col for col in required_df.columns if col not in raw_df.columns]
+            # Basic checks for required columns (FIX 1: Corrected undefined variable required_df)
+            required_check_cols = ['Date_Post', 'Donor', 'Subject', 'Region', 'Student Id', 'Class', 'Program Type', 'Q1', 'Q1_Post']
+            missing_cols = [col for col in required_check_cols if col not in raw_df.columns]
             
             if missing_cols:
                 st.error(f"❌ Missing required columns: {', '.join(missing_cols)}. Please add these columns and try again.")
@@ -423,11 +421,9 @@ if uploaded_file is not None:
         st.metric("Improvement", f"{improvement:.1f}%", delta=f"{improvement:.1f}%")
     
     
-    # FIX APPLIED: Correctly calculate tests per student metrics including Date_Post
     if not filtered_df.empty:
         # 1. Identify unique tests per student
         # A unique test is defined by Student, Content, Class, School AND Date.
-        # This handles cases where a student takes the same content on different dates.
         unique_student_tests = filtered_df.groupby(
             ['Student Id', 'Content Id', 'Class', 'School Name', 'Date_Post']
         ).size().reset_index(name='count')
@@ -451,14 +447,14 @@ if uploaded_file is not None:
     with col6:
         st.metric("Min Tests/Student", f"{min_tests}")
     
-    # ===== TABS FOR DIFFERENT ANALYSES (MODIFIED TO ADD TAB 8) =====
+    # ===== TABS FOR DIFFERENT ANALYSES (UNCHANGED) =====
     st.markdown("---")
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["📍 Region Analysis", "👤 Instructor Analysis", "📚 Grade Analysis", "📊 Program Type Analysis", "👥 Student Participation", "🏫 School Analysis", "💰 Donor Analysis", "🔬 Subject Analysis"])
     
     # Placeholder for subject_stats for download section
     subject_stats = None
 
-    # ===== TAB 1: REGION ANALYSIS (MODIFIED SORTING) =====
+    # ===== TAB 1: REGION ANALYSIS (UNCHANGED) =====
     with tab1:
         st.header("Region-wise Performance Analysis")
         
@@ -473,7 +469,7 @@ if uploaded_file is not None:
         region_stats['Post_Score_Pct'] = (region_stats['Post_Score'] / 5) * 100
         region_stats['Improvement'] = region_stats['Post_Score_Pct'] - region_stats['Pre_Score_Pct']
         
-        # MODIFIED: Sort in ascending order of Post Score Pct
+        # Sort in ascending order of Post Score Pct
         region_stats = region_stats.sort_values('Post_Score_Pct', ascending=True)
         
         # Create line chart
@@ -589,7 +585,7 @@ if uploaded_file is not None:
             most_improved['Improvement'] = most_improved['Improvement'].apply(lambda x: f"{x:.1f}%")
             st.dataframe(most_improved, hide_index=True, use_container_width=True)
     
-    # ===== TAB 2: INSTRUCTOR ANALYSIS (MODIFIED SORTING) =====
+    # ===== TAB 2: INSTRUCTOR ANALYSIS (UNCHANGED) =====
     with tab2:
         st.header("Instructor-wise Performance Analysis")
         
@@ -609,7 +605,7 @@ if uploaded_file is not None:
         # Show top N instructors
         top_n = st.slider("Number of instructors to display", 5, 20, 10)
         
-        # MODIFIED: Get top N performers, then sort them ascending for the plot
+        # Get top N performers, then sort them ascending for the plot
         top_instructors = instructor_stats_for_table.nlargest(top_n, 'Post_Score_Pct').sort_values('Post_Score_Pct', ascending=True)
 
         fig = go.Figure()
@@ -671,7 +667,7 @@ if uploaded_file is not None:
         st.markdown("---")
         st.subheader("📋 Complete Instructor List - Assessment Count")
         
-        # FIX APPLIED: Generate a unique session key including DATE to correctly count assessments
+        # FIX APPLIED: Correctly calculate assessments using Date_Post
         filtered_df['Assessment_Session_Key'] = (
             filtered_df['Content Id'].astype(str) + '_' + 
             filtered_df['Class'].astype(str) + '_' + 
@@ -768,7 +764,7 @@ if uploaded_file is not None:
             st.metric("Total Unique Instructors", filtered_df['Instructor Name'].nunique())
             st.metric("Average per Region", f"{instructors_per_region['Number of Instructors'].mean():.1f}")
     
-    # ===== TAB 3: GRADE ANALYSIS (MODIFIED SORTING) =====
+    # ===== TAB 3: GRADE ANALYSIS (UNCHANGED) =====
     with tab3:
         st.header("Grade-wise Performance Analysis")
         
@@ -782,7 +778,7 @@ if uploaded_file is not None:
         grade_stats['Post_Score_Pct'] = (grade_stats['Post_Score'] / 5) * 100
         grade_stats['Improvement'] = grade_stats['Post_Score_Pct'] - grade_stats['Pre_Score_Pct']
         
-        # MODIFIED: Sort in ascending order of Post Score Pct
+        # Sort in ascending order of Post Score Pct
         grade_stats = grade_stats.sort_values('Post_Score_Pct', ascending=True)
 
         fig = go.Figure()
@@ -835,7 +831,7 @@ if uploaded_file is not None:
         display_stats['Improvement %'] = display_stats['Improvement %'].apply(lambda x: f"{x:.1f}%")
         st.dataframe(display_stats, hide_index=True, use_container_width=True)
     
-    # ===== TAB 4: PROGRAM TYPE ANALYSIS (MODIFIED SORTING) =====
+    # ===== TAB 4: PROGRAM TYPE ANALYSIS (MODIFIED FILTER LOGIC) =====
     with tab4:
         st.header("Program Type Performance Analysis")
         
@@ -850,7 +846,7 @@ if uploaded_file is not None:
         program_stats['Post_Score_Pct'] = (program_stats['Post_Score'] / 5) * 100
         program_stats['Improvement'] = program_stats['Post_Score_Pct'] - program_stats['Pre_Score_Pct']
         
-        # MODIFIED: Sort in ascending order of Post Score Pct for the bar chart
+        # Sort in ascending order of Post Score Pct for the bar chart
         program_stats = program_stats.sort_values('Post_Score_Pct', ascending=True)
         
         fig = go.Figure()
@@ -905,13 +901,14 @@ if uploaded_file is not None:
         unique_regions_in_data = sorted(filtered_df['Region'].unique())
 
         # Selectbox to choose Region
+        # FIX 2: Corrected the filtering logic and variable usage
         selected_region_for_prog = st.selectbox("Select Region to compare Programs", 
-                                             unique_regions_in_data)
+                                             unique_regions_in_data, key='prog_region_viz_select')
         
-        # Filter data based on selection
-        region_data = program_region_stats[program_region_stats['Program Type'] == selected_program_for_prog]
+        # Filter data based on selection (FIX: Filter by the correctly selected REGION)
+        region_data = program_region_stats[program_region_stats['Region'] == selected_region_for_prog].copy()
         
-        # MODIFIED: Sort in ascending order of Post Score Pct for the line chart
+        # Sort in ascending order of Post Score Pct for the line chart
         region_data = region_data.sort_values('Post_Score_Pct', ascending=True)
 
         # Create Line/Marker Chart (Similar to Tab 1 style)
@@ -1365,7 +1362,7 @@ if uploaded_file is not None:
             # If donor_filtered_df is empty, show the total summary and inform the user
             st.info("No records match the current filter selection.")
             
-    # ===== TAB 8: SUBJECT ANALYSIS (NEW) =====
+    # ===== TAB 8: SUBJECT ANALYSIS (NEW/MODIFIED) =====
     with tab8:
         # Call the new function
         if not filtered_df.empty:
@@ -1374,7 +1371,7 @@ if uploaded_file is not None:
             st.info("No data to display after applying filters.")
 
     
-    # ===== DOWNLOAD SECTION (Modified to include Subject and handle potential missing variables) =====
+    # ===== DOWNLOAD SECTION (UNCHANGED) =====
     st.markdown("---")
     st.subheader("📥 Download Analysis Reports")
     
@@ -1411,7 +1408,7 @@ if uploaded_file is not None:
     with col6:
         # Check if subject_stats was successfully generated in Tab 8
         if subject_stats is not None:
-            # Re-sort for download (alphabetical by subject name is conventional)
+            # Prepare subject stats for download
             subject_csv_final = subject_stats[[
                 'Subject', 
                 'Num_Students', 
@@ -1438,7 +1435,7 @@ else:
     - `Region` - Geographic region
     - `School Name` - Name of the school
     - `Donor` - The donor/partner associated with the record
-    - **`Subject` - The subject name (NEW REQUIREMENT)**
+    - **`Subject` - The subject name**
     - `UDISE` - School unique ID
     - `Student Id` - Unique student identifier
     - `Class` - Class with section (e.g., 6-A, 7-B)
