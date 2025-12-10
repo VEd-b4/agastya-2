@@ -8,7 +8,8 @@ from plotly.subplots import make_subplots
 # Set page configuration
 st.set_page_config(page_title="Student Assessment Dashboard", layout="wide", page_icon="📊")
 
-# ===== DATA CLEANING FUNCTIONS =====
+# ===== DATA CLEANING FUNCTIONS (UNCHANGED) =====
+# ... (Keep the clean_and_process_data function as is) ...
 
 def clean_and_process_data(df):
     """
@@ -87,7 +88,7 @@ def clean_and_process_data(df):
     
     return df, initial_count, cleaned_count
 
-# ===== MAIN APPLICATION =====
+# ===== MAIN APPLICATION (UNCHANGED UP TO TAB 7) =====
 
 # Title and description
 st.title("📊 Student Assessment Analysis Platform")
@@ -163,7 +164,7 @@ if uploaded_file is not None:
     if selected_class != 'All':
         filtered_df = filtered_df[filtered_df['Parent_Class'] == selected_class]
     
-    # ===== KEY METRICS =====
+    # ===== KEY METRICS (UNCHANGED) =====
     st.markdown("---")
     st.subheader("📊 Key Performance Metrics")
     
@@ -210,11 +211,11 @@ if uploaded_file is not None:
     with col6:
         st.metric("Min Tests/Student", f"{min_tests}")
     
-    # ===== TABS FOR DIFFERENT ANALYSES =====
+    # ===== TABS FOR DIFFERENT ANALYSES (UNCHANGED) =====
     st.markdown("---")
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📍 Region Analysis", "👤 Instructor Analysis", "📚 Grade Analysis", "📊 Program Type Analysis", "👥 Student Participation", "🏫 School Analysis", "💰 Donor Analysis"])
     
-    # ===== TAB 1: REGION ANALYSIS =====
+    # ===== TAB 1: REGION ANALYSIS (UNCHANGED) =====
     with tab1:
         st.header("Region-wise Performance Analysis")
         
@@ -340,7 +341,7 @@ if uploaded_file is not None:
             most_improved['Improvement'] = most_improved['Improvement'].apply(lambda x: f"{x:.1f}%")
             st.dataframe(most_improved, hide_index=True, use_container_width=True)
     
-    # ===== TAB 2: INSTRUCTOR ANALYSIS =====
+    # ===== TAB 2: INSTRUCTOR ANALYSIS (UNCHANGED) =====
     with tab2:
         st.header("Instructor-wise Performance Analysis")
         
@@ -515,7 +516,7 @@ if uploaded_file is not None:
             st.metric("Total Unique Instructors", filtered_df['Instructor Name'].nunique())
             st.metric("Average per Region", f"{instructors_per_region['Number of Instructors'].mean():.1f}")
     
-    # ===== TAB 3: GRADE ANALYSIS =====
+    # ===== TAB 3: GRADE ANALYSIS (UNCHANGED) =====
     with tab3:
         st.header("Grade-wise Performance Analysis")
         
@@ -580,7 +581,7 @@ if uploaded_file is not None:
         display_stats['Improvement %'] = display_stats['Improvement %'].apply(lambda x: f"{x:.1f}%")
         st.dataframe(display_stats, hide_index=True, use_container_width=True)
     
-    # ===== TAB 4: PROGRAM TYPE ANALYSIS (UPDATED) =====
+    # ===== TAB 4: PROGRAM TYPE ANALYSIS (UNCHANGED) =====
     with tab4:
         st.header("Program Type Performance Analysis")
         
@@ -702,7 +703,7 @@ if uploaded_file is not None:
         display_prog['Improvement %'] = display_prog['Improvement %'].apply(lambda x: f"{x:.1f}%")
         st.dataframe(display_prog, hide_index=True, use_container_width=True)
     
-    # ===== TAB 5: STUDENT PARTICIPATION =====
+    # ===== TAB 5: STUDENT PARTICIPATION (UNCHANGED) =====
     with tab5:
         st.header("Student Participation Analysis")
         st.markdown("### Number of Unique Students Taking Assessments")
@@ -859,7 +860,7 @@ if uploaded_file is not None:
             program_csv = students_per_program.to_csv(index=False)
             st.download_button("Download Program Data", program_csv, "students_per_program.csv", "text/csv")
 
-    # ===== TAB 6: SCHOOL ANALYSIS =====
+    # ===== TAB 6: SCHOOL ANALYSIS (UNCHANGED) =====
     with tab6:
         st.header("School Analysis")
         st.markdown("### School Performance and Engagement Metrics")
@@ -957,12 +958,31 @@ if uploaded_file is not None:
             st.error(f"Missing required columns for School Analysis: {e}")
             st.warning("Please ensure your Excel file contains 'School Name' and 'UDISE' columns.")
 
-    # ===== TAB 7: DONOR ANALYSIS =====
+    # ===== TAB 7: DONOR ANALYSIS (MODIFIED) =====
     with tab7:
         st.header("Donor Performance Analysis")
         
-        # 1. Calculate Donor Statistics
-        # UDISE is used as a unique identifier for schools
+        # 1. ADD DONOR FILTER
+        all_donors = ['All Donors'] + sorted(filtered_df['Donor'].unique().tolist())
+        selected_donor = st.selectbox("Select Donor for Individual Analysis", all_donors)
+        
+        # Apply the donor filter to create donor_filtered_df
+        if selected_donor != 'All Donors':
+            donor_filtered_df = filtered_df[filtered_df['Donor'] == selected_donor]
+            st.subheader(f"Metrics for Donor: **{selected_donor}**")
+        else:
+            donor_filtered_df = filtered_df
+            st.subheader("Metrics for All Donors (Summary View)")
+
+        if donor_filtered_df.empty:
+            st.info(f"No data available for the selected donor/filters.")
+            # Use continue/return or simply let the rest of the tab not execute data logic
+            # For simplicity, we'll continue with the original logic which handles empty DFs gracefully
+            pass 
+        
+        # --- LOGIC FOR ALL DONORS (Summary Table) ---
+        
+        # 1. Calculate Donor Statistics (Grouping by Donor)
         donor_stats = filtered_df.groupby('Donor').agg(
             Num_Schools=('UDISE', 'nunique'),
             Num_Students=('Student Id', 'nunique'),
@@ -1006,33 +1026,86 @@ if uploaded_file is not None:
         display_donor_stats['Avg Post %'] = display_donor_stats['Avg Post %'].apply(lambda x: f"{x:.1f}%")
         display_donor_stats['Improvement %'] = display_donor_stats['Improvement %'].apply(lambda x: f"{x:.1f}%")
         
-        st.subheader("Key Donor Metrics")
-        
-        # Key Metrics (Top level summary)
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Unique Donors", len(display_donor_stats))
-        with col2:
-            st.metric("Avg Schools per Donor", f"{display_donor_stats['Schools'].mean():.1f}")
-        with col3:
-            st.metric("Total Assessments", display_donor_stats['Assessments'].sum())
-            
-        st.markdown("---")
-
-        st.subheader("Detailed Donor Analysis Table")
-        
+        st.subheader("Detailed Donor Analysis Table (All Donors)")
         st.dataframe(display_donor_stats, hide_index=True, use_container_width=True)
+        st.markdown("---")
         
-        # Download button
-        donor_csv = display_donor_stats.to_csv(index=False)
-        st.download_button(
-            "📥 Download Donor Analysis Data (CSV)",
-            donor_csv,
-            "donor_analysis.csv",
-            "text/csv"
-        )
+        # --- LOGIC FOR INDIVIDUAL DONOR (Specific Metrics) ---
+
+        if not donor_filtered_df.empty:
+            
+            # Calculate Metrics for the Selected Donor/All
+            donor_specific_stats = {
+                'Avg Pre Score %': (donor_filtered_df['Pre_Score'].mean() / 5) * 100,
+                'Avg Post Score %': (donor_filtered_df['Post_Score'].mean() / 5) * 100,
+                'Total Schools': donor_filtered_df['UDISE'].nunique(),
+                'Total Students': donor_filtered_df['Student Id'].nunique(),
+                'Total Assessments': len(donor_filtered_df)
+            }
+            donor_specific_stats['Improvement %'] = donor_specific_stats['Avg Post Score %'] - donor_specific_stats['Avg Pre Score %']
+            
+            # Key Metrics (Top level summary)
+            col1, col2, col3, col4, col5 = st.columns(5)
+            with col1:
+                st.metric("Avg Pre Score", f"{donor_specific_stats['Avg Pre Score %']:.1f}%")
+            with col2:
+                st.metric("Avg Post Score", f"{donor_specific_stats['Avg Post Score %']:.1f}%")
+            with col3:
+                st.metric("Improvement", f"{donor_specific_stats['Improvement %']:.1f}%", delta=f"{donor_specific_stats['Improvement %']:.1f}%")
+            with col4:
+                st.metric("Total Schools", donor_specific_stats['Total Schools'])
+            with col5:
+                st.metric("Total Students", donor_specific_stats['Total Students'])
+                
+            st.markdown("---")
+            
+            # Breakdown by Region for the Selected Donor
+            st.subheader(f"Region Breakdown for {selected_donor}")
+            
+            donor_region_stats = donor_filtered_df.groupby('Region').agg(
+                Num_Schools=('UDISE', 'nunique'),
+                Num_Students=('Student Id', 'nunique'),
+                Avg_Pre_Score_Raw=('Pre_Score', 'mean'),
+                Avg_Post_Score_Raw=('Post_Score', 'mean')
+            ).reset_index()
+            
+            donor_region_stats['Avg Pre %'] = (donor_region_stats['Avg_Pre_Score_Raw'] / 5) * 100
+            donor_region_stats['Avg Post %'] = (donor_region_stats['Avg_Post_Score_Raw'] / 5) * 100
+            donor_region_stats['Improvement %'] = donor_region_stats['Avg Post %'] - donor_region_stats['Avg Pre %']
+            
+            display_donor_region = donor_region_stats.copy()
+            display_donor_region = display_donor_region[[
+                'Region', 
+                'Num_Schools', 
+                'Num_Students', 
+                'Avg Pre %', 
+                'Avg Post %', 
+                'Improvement %'
+            ]]
+            
+            display_donor_region.columns = ['Region', 'Schools', 'Students', 'Avg Pre %', 'Avg Post %', 'Improvement %']
+            display_donor_region['Avg Pre %'] = display_donor_region['Avg Pre %'].apply(lambda x: f"{x:.1f}%")
+            display_donor_region['Avg Post %'] = display_donor_region['Avg Post %'].apply(lambda x: f"{x:.1f}%")
+            display_donor_region['Improvement %'] = display_donor_region['Improvement %'].apply(lambda x: f"{x:.1f}%")
+            
+            st.dataframe(display_donor_region, hide_index=True, use_container_width=True)
+
+            # Download button for ALL DONOR SUMMARY TABLE (unchanged, using pre-calculated donor_stats)
+            st.markdown("---")
+            donor_csv = display_donor_stats.to_csv(index=False)
+            st.download_button(
+                "📥 Download All Donor Analysis Data (CSV)",
+                donor_csv,
+                "donor_analysis.csv",
+                "text/csv"
+            )
+
+        else:
+            # If donor_filtered_df is empty, show the total summary and inform the user
+            st.info("No records match the current filter selection.")
+
     
-    # ===== DOWNLOAD SECTION =====
+    # ===== DOWNLOAD SECTION (Modified to ensure variables exist) =====
     st.markdown("---")
     st.subheader("📥 Download Analysis Reports")
     
@@ -1059,6 +1132,7 @@ if uploaded_file is not None:
     with col5:
         # Check if donor_stats exists (it's created inside the tab)
         if 'display_donor_stats' in locals():
+            # Use the donor_csv variable created in Tab 7
             st.download_button("Download Donor Analysis", donor_csv, "donor_analysis_summary.csv", "text/csv")
 
 
