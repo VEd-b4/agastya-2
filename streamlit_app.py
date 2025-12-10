@@ -24,7 +24,6 @@ def clean_and_process_data(df):
     initial_count = len(df)
     
     # ===== STEP 1: DATA CLEANING =====
-    # [Unchanged cleaning code]
     # Define pre and post question columns
     pre_questions = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5']
     post_questions = ['Q1_Post', 'Q2_Post', 'Q3_Post', 'Q4_Post', 'Q5_Post']
@@ -49,7 +48,6 @@ def clean_and_process_data(df):
     cleaned_count = len(df)
     
     # ===== STEP 2: CALCULATE SCORES =====
-    # [Unchanged score calculation]
     # Define answer columns
     pre_answers = ['Q1 Answer', 'Q2 Answer', 'Q3 Answer', 'Q4 Answer', 'Q5 Answer']
     post_answers = ['Q1_Answer_Post', 'Q2_Answer_Post', 'Q3_Answer_Post', 'Q4_Answer_Post', 'Q5_Answer_Post']
@@ -65,7 +63,6 @@ def clean_and_process_data(df):
         df['Post_Score'] += (df[q] == df[ans]).astype(int)
     
     # ===== STEP 3: STANDARDIZE PROGRAM TYPES =====
-    # [Unchanged program type standardization]
     # Create a mapping for program types
     # SCB, SCC, SCM, SCP are combined into PCMB
     program_type_mapping = {
@@ -82,24 +79,15 @@ def clean_and_process_data(df):
     df['Program Type'] = df['Program Type'].replace(program_type_mapping)
     
     # ===== STEP 4: CREATE PARENT CLASS =====
-    # [Unchanged parent class creation]
     # Extract parent class from Class column (e.g., "6-A" -> "6", "7-B" -> "7")
     df['Parent_Class'] = df['Class'].astype(str).str.extract(r'^(\d+)')[0]
     
     # Filter for grades 6-10 only
     df = df[df['Parent_Class'].isin(['6', '7', '8', '9', '10'])]
     
-    # ===== STEP 5: CALCULATE TEST FREQUENCY (REMOVED FROM HERE) =====
-    # The original step 5 is removed because calculating Test_Count on the whole DF
-    # then using it on the filtered DF is confusing. It's better to calculate 
-    # test count only on the filtered data right before displaying the metric.
-    # The original line: df['Test_Count'] = df.groupby('Student Id')['Student Id'].transform('count')
-    # is now handled directly in the Key Metrics section on the filtered_df.
-    
     return df, initial_count, cleaned_count
 
 # ===== MAIN APPLICATION =====
-# [Unchanged application setup and filtering]
 
 # Title and description
 st.title("📊 Student Assessment Analysis Platform")
@@ -114,6 +102,12 @@ if uploaded_file is not None:
     with st.spinner("Loading and cleaning data..."):
         try:
             raw_df = pd.read_excel(uploaded_file)
+            
+            # Basic check for Date_Post before proceeding
+            if 'Date_Post' not in raw_df.columns:
+                st.error("❌ Column 'Date_Post' not found in uploaded file. Please add this column and try again.")
+                st.stop()
+                
             df, initial_count, cleaned_count = clean_and_process_data(raw_df)
             
             # Show cleaning summary
@@ -164,7 +158,7 @@ if uploaded_file is not None:
     if selected_class != 'All':
         filtered_df = filtered_df[filtered_df['Parent_Class'] == selected_class]
     
-    # ===== KEY METRICS (FIX APPLIED HERE) =====
+    # ===== KEY METRICS =====
     st.markdown("---")
     st.subheader("📊 Key Performance Metrics")
     
@@ -183,15 +177,19 @@ if uploaded_file is not None:
         st.metric("Improvement", f"{improvement:.1f}%", delta=f"{improvement:.1f}%")
     
     
-    # FIX START: Correctly calculate tests per student metrics
+    # FIX APPLIED: Correctly calculate tests per student metrics including Date_Post
     if not filtered_df.empty:
-        # 1. Aggregate to get one row per unique student in the filtered dataset
-        # This count represents the number of tests *visible* under the current filter
-        student_activity = filtered_df.groupby('Student Id').agg(
-            Visible_Tests=('Student Id', 'count')
-        ).reset_index()
+        # 1. Identify unique tests per student
+        # A unique test is defined by Student, Content, Class, School AND Date.
+        # This handles cases where a student takes the same content on different dates.
+        unique_student_tests = filtered_df.groupby(
+            ['Student Id', 'Content Id', 'Class', 'School Name', 'Date_Post']
+        ).size().reset_index(name='count')
+        
+        # 2. Count how many such unique tests each student has taken
+        student_activity = unique_student_tests.groupby('Student Id').size().reset_index(name='Visible_Tests')
 
-        # 2. Calculate the correct metrics from the aggregated data
+        # 3. Calculate metrics
         avg_tests = student_activity['Visible_Tests'].mean()
         max_tests = student_activity['Visible_Tests'].max()
         min_tests = student_activity['Visible_Tests'].min()
@@ -206,15 +204,12 @@ if uploaded_file is not None:
 
     with col6:
         st.metric("Min Tests/Student", f"{min_tests}")
-    # FIX END
     
-    # ===== TABS FOR DIFFERENT ANALYSES (REST OF CODE UNCHANGED) =====
+    # ===== TABS FOR DIFFERENT ANALYSES =====
     st.markdown("---")
-    # Added "🏫 School Analysis" to the tabs
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📍 Region Analysis", "👤 Instructor Analysis", "📚 Grade Analysis", "📊 Program Type Analysis", "👥 Student Participation", "🏫 School Analysis"])
     
     # ===== TAB 1: REGION ANALYSIS =====
-    # [Unchanged Tab 1 code]
     with tab1:
         st.header("Region-wise Performance Analysis")
         
@@ -341,7 +336,6 @@ if uploaded_file is not None:
             st.dataframe(most_improved, hide_index=True, use_container_width=True)
     
     # ===== TAB 2: INSTRUCTOR ANALYSIS =====
-    # [Unchanged Tab 2 code (includes the previous fix for instructor assessment count)]
     with tab2:
         st.header("Instructor-wise Performance Analysis")
         
@@ -419,13 +413,12 @@ if uploaded_file is not None:
         st.markdown("---")
         st.subheader("📋 Complete Instructor List - Assessment Count")
         
-        # FIX START: Generate a unique session key to correctly count assessments
-        # Previous logic only counted unique Content IDs. 
-        # New logic counts unique combinations of Content, Class, and School (An "Assessment Event")
+        # FIX APPLIED: Generate a unique session key including DATE to correctly count assessments
         filtered_df['Assessment_Session_Key'] = (
             filtered_df['Content Id'].astype(str) + '_' + 
             filtered_df['Class'].astype(str) + '_' + 
-            filtered_df['School Name'].fillna('NA').astype(str)
+            filtered_df['School Name'].fillna('NA').astype(str) + '_' +
+            filtered_df['Date_Post'].astype(str) # Added Date_Post
         )
         
         # Calculate number of assessments (using the session key) per instructor
@@ -434,7 +427,6 @@ if uploaded_file is not None:
             'Student Id': 'count',
             'Region': lambda x: x.mode()[0] if not x.mode().empty else x.iloc[0]  # Most common region
         }).reset_index()
-        # FIX END
         
         all_instructors.columns = ['Instructor Name', 'Instructor Login Id', 'Number of Assessments', 'Total Students', 'Primary Region']
         all_instructors = all_instructors.sort_values('Number of Assessments', ascending=False)
@@ -519,7 +511,6 @@ if uploaded_file is not None:
             st.metric("Average per Region", f"{instructors_per_region['Number of Instructors'].mean():.1f}")
     
     # ===== TAB 3: GRADE ANALYSIS =====
-    # [Unchanged Tab 3 code]
     with tab3:
         st.header("Grade-wise Performance Analysis")
         
@@ -585,7 +576,6 @@ if uploaded_file is not None:
         st.dataframe(display_stats, hide_index=True, use_container_width=True)
     
     # ===== TAB 4: PROGRAM TYPE ANALYSIS =====
-    # [Unchanged Tab 4 code]
     with tab4:
         st.header("Program Type Performance Analysis")
         
@@ -644,7 +634,6 @@ if uploaded_file is not None:
         st.dataframe(display_prog, hide_index=True, use_container_width=True)
     
     # ===== TAB 5: STUDENT PARTICIPATION =====
-    # [Unchanged Tab 5 code]
     with tab5:
         st.header("Student Participation Analysis")
         st.markdown("### Number of Unique Students Taking Assessments")
@@ -801,8 +790,7 @@ if uploaded_file is not None:
             program_csv = students_per_program.to_csv(index=False)
             st.download_button("Download Program Data", program_csv, "students_per_program.csv", "text/csv")
 
-    # ===== TAB 6: SCHOOL ANALYSIS (NEW) =====
-    # [Unchanged Tab 6 code]
+    # ===== TAB 6: SCHOOL ANALYSIS =====
     with tab6:
         st.header("School Analysis")
         st.markdown("### School Performance and Engagement Metrics")
@@ -943,6 +931,7 @@ else:
     - `Instructor Login Id` - Login ID of instructor
     - `Program Type` - Program type code
     - `Content Id` - Assessment/Content Identifier
+    - `Date_Post` - Assessment Date (Required for tracking unique tests)
     
     **Pre-Session (Questions & Answers):**
     - `Q1`, `Q2`, `Q3`, `Q4`, `Q5` - Student responses
