@@ -84,9 +84,245 @@ def clean_and_process_data(df):
     # Filter for grades 6-10 only
     df = df[df['Parent_Class'].isin(['6', '7', '8', '9', '10'])]
     
+    # ===== STEP 5: EXTRACT MONTH AND MONTH NUMBER (NEW) =====
+    try:
+        # Convert Date_Post to datetime objects
+        df['Date_Post_DT'] = pd.to_datetime(df['Date_Post'], format='%d-%m-%Y', errors='coerce')
+        # Extract month number (1=Jan, 12=Dec)
+        df['Month_Num'] = df['Date_Post_DT'].dt.month
+        # Extract month name
+        df['Month'] = df['Date_Post_DT'].dt.strftime('%b-%Y') # e.g., 'Nov-2025'
+        
+        # Remove rows where date parsing failed
+        df.dropna(subset=['Date_Post_DT'], inplace=True)
+        
+    except Exception as e:
+        st.warning(f"Could not process 'Date_Post' for month analysis. Error: {e}")
+        df['Month_Num'] = 0
+        df['Month'] = 'Unknown'
+    
     return df, initial_count, cleaned_count
 
-# ===== TAB 8: SUBJECT ANALYSIS (MODIFIED) =====
+# ===== TAB 9: MONTH ANALYSIS (NEW) =====
+def tab9_month_analysis(df):
+    """
+    Generates the Month-wise Performance, Assessment Count, and Student Participation Analysis.
+    """
+    st.header("📅 Monthly Performance and Participation Analysis")
+    
+    # Check for required columns
+    required_cols = ['Month', 'Month_Num', 'Pre_Score', 'Post_Score', 'Student Id']
+    if not all(col in df.columns for col in required_cols):
+        st.error(f"❌ Required columns for month analysis not found. Cannot proceed.")
+        return
+
+    # --------------------------------------------------------------------
+    # 1. Line Graph: Pre-Score vs Post-Score by Month
+    # --------------------------------------------------------------------
+    st.markdown("### 📈 Monthly Average Score Comparison (Pre vs. Post)")
+    
+    # Calculate Monthly Performance Statistics
+    month_perf_stats = df.groupby(['Month_Num', 'Month']).agg(
+        Avg_Pre_Score_Raw=('Pre_Score', 'mean'),
+        Avg_Post_Score_Raw=('Post_Score', 'mean')
+    ).reset_index()
+
+    # Calculate percentages
+    month_perf_stats['Avg Pre Score %'] = (month_perf_stats['Avg_Pre_Score_Raw'] / 5) * 100
+    month_perf_stats['Avg Post Score %'] = (month_perf_stats['Avg_Post_Score_Raw'] / 5) * 100
+    
+    # Sort: First by Pre Score % (ascending), then by Month Number (to keep similar scores in chronological order)
+    # The plot sorting requirement is: "in ascending order of pre-score"
+    month_perf_stats = month_perf_stats.sort_values(['Avg Pre Score %', 'Month_Num'], ascending=[True, True])
+    
+    fig_perf = go.Figure()
+    
+    # Pre-Session Scores
+    fig_perf.add_trace(go.Scatter(
+        x=month_perf_stats['Month'],
+        y=month_perf_stats['Avg Pre Score %'],
+        mode='lines+markers+text',
+        name='Pre-Session Average',
+        line=dict(color='#3498db', width=3),
+        marker=dict(size=10),
+        text=[f"{val:.0f}%" for val in month_perf_stats['Avg Pre Score %']],
+        textposition='top center',
+        textfont=dict(size=12, color='#3498db')
+    ))
+    
+    # Post-Session Scores
+    fig_perf.add_trace(go.Scatter(
+        x=month_perf_stats['Month'],
+        y=month_perf_stats['Avg Post Score %'],
+        mode='lines+markers+text',
+        name='Post-Session Average',
+        line=dict(color='#e74c3c', width=3),
+        marker=dict(size=10),
+        text=[f"{val:.0f}%" for val in month_perf_stats['Avg Post Score %']],
+        textposition='top center',
+        textfont=dict(size=12, color='#e74c3c')
+    ))
+    
+    fig_perf.update_layout(
+        title='Monthly Pre and Post Assessment Scores (Ascending by Pre Score)',
+        xaxis_title='Month',
+        yaxis_title='Average Score (%)',
+        hovermode='x unified',
+        height=500,
+        plot_bgcolor='#2b2b2b',
+        paper_bgcolor='#1e1e1e',
+        font=dict(color='white'),
+        yaxis=dict(range=[0, 100], gridcolor='#404040'),
+        xaxis=dict(type='category', gridcolor='#404040')
+    )
+    
+    st.plotly_chart(fig_perf, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # --------------------------------------------------------------------
+    # 2. Bar Graph: Number of Assessments Taken in Each Month
+    # --------------------------------------------------------------------
+    st.markdown("### 📊 Monthly Assessment Count")
+    
+    # Define a key to count unique assessments (based on the main app's Key Metrics logic)
+    df['Assessment_Key'] = (
+        df['Student Id'].astype(str) + '_' + 
+        df['Content Id'].astype(str) + '_' + 
+        df['Class'].astype(str) + '_' + 
+        df['School Name'].fillna('NA').astype(str) + '_' +
+        df['Date_Post'].astype(str)
+    )
+    
+    # Calculate unique assessment count per month
+    month_assessments = df.groupby(['Month_Num', 'Month'])['Assessment_Key'].nunique().reset_index()
+    month_assessments.columns = ['Month_Num', 'Month', 'Number of Assessments']
+    
+    # Sort chronologically
+    month_assessments = month_assessments.sort_values('Month_Num')
+
+    fig_assessments = go.Figure()
+    
+    fig_assessments.add_trace(go.Bar(
+        x=month_assessments['Month'],
+        y=month_assessments['Number of Assessments'],
+        marker_color='#1abc9c',
+        text=month_assessments['Number of Assessments'],
+        textposition='outside',
+        textfont=dict(size=14, color='white')
+    ))
+    
+    fig_assessments.update_layout(
+        title='Total Unique Assessments Conducted by Month',
+        xaxis_title='Month',
+        yaxis_title='Number of Unique Assessments',
+        height=450,
+        plot_bgcolor='#2b2b2b',
+        paper_bgcolor='#1e1e1e',
+        font=dict(color='white'),
+        yaxis=dict(gridcolor='#404040'),
+        xaxis=dict(type='category', gridcolor='#404040')
+    )
+    
+    st.plotly_chart(fig_assessments, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # --------------------------------------------------------------------
+    # 3. Bar Graph: Number of Unique Students in Each Month
+    # --------------------------------------------------------------------
+    st.markdown("### 👤 Monthly Unique Student Participation")
+    
+    # Calculate unique student count per month
+    month_students = df.groupby(['Month_Num', 'Month'])['Student Id'].nunique().reset_index()
+    month_students.columns = ['Month_Num', 'Month', 'Number of Unique Students']
+    
+    # Sort chronologically
+    month_students = month_students.sort_values('Month_Num')
+
+    fig_students = go.Figure()
+    
+    fig_students.add_trace(go.Bar(
+        x=month_students['Month'],
+        y=month_students['Number of Unique Students'],
+        marker_color='#f39c12',
+        text=month_students['Number of Unique Students'],
+        textposition='outside',
+        textfont=dict(size=14, color='white')
+    ))
+    
+    fig_students.update_layout(
+        title='Number of Unique Students Assessed by Month',
+        xaxis_title='Month',
+        yaxis_title='Number of Unique Students',
+        height=450,
+        plot_bgcolor='#2b2b2b',
+        paper_bgcolor='#1e1e1e',
+        font=dict(color='white'),
+        yaxis=dict(gridcolor='#404040'),
+        xaxis=dict(type='category', gridcolor='#404040')
+    )
+    
+    st.plotly_chart(fig_students, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # Detailed Table
+    st.subheader("📋 Monthly Performance and Participation Summary")
+    
+    # Merge all stats
+    summary_table = month_perf_stats.merge(
+        month_assessments[['Month', 'Number of Assessments']], 
+        on='Month', 
+        how='left'
+    ).merge(
+        month_students[['Month', 'Number of Unique Students']], 
+        on='Month', 
+        how='left'
+    )
+    
+    # Re-sort for table view (chronological)
+    summary_table = summary_table.sort_values('Month_Num')
+
+    # Create display columns
+    display_summary = summary_table[[
+        'Month',
+        'Avg Pre Score %', 
+        'Avg Post Score %',
+        'Number of Assessments',
+        'Number of Unique Students'
+    ]].copy()
+    
+    display_summary['Improvement %'] = display_summary['Avg Post Score %'] - display_summary['Avg Pre Score %']
+    
+    # Rename and reorder columns
+    display_summary.columns = [
+        'Month', 
+        'Avg Pre %', 
+        'Avg Post %', 
+        'Assessments', 
+        'Unique Students',
+        'Improvement %'
+    ]
+    
+    # Apply string formatting
+    display_summary['Avg Pre %'] = display_summary['Avg Pre %'].apply(lambda x: f"{x:.1f}%")
+    display_summary['Avg Post %'] = display_summary['Avg Post %'].apply(lambda x: f"{x:.1f}%")
+    display_summary['Improvement %'] = display_summary['Improvement %'].apply(lambda x: f"{x:.1f}%")
+    
+    st.dataframe(display_summary, hide_index=True, use_container_width=True)
+    
+    # Download button (use the float-based summary_table for download)
+    st.markdown("---")
+    summary_csv = summary_table.to_csv(index=False)
+    st.download_button(
+        "📥 Download Monthly Analysis Data (CSV)",
+        summary_csv,
+        "monthly_analysis.csv",
+        "text/csv"
+    )
+
+# ===== TAB 8: SUBJECT ANALYSIS (UNCHANGED) =====
 def tab8_subject_analysis(df):
     """
     Generates the Subject-wise Performance and Participation Analysis, 
@@ -485,9 +721,9 @@ if uploaded_file is not None:
     with col6:
         st.metric("Min Tests/Student", f"{min_tests}")
     
-    # ===== TABS FOR DIFFERENT ANALYSES (UNCHANGED) =====
+    # ===== TABS FOR DIFFERENT ANALYSES (MODIFIED TO ADD TAB 9) =====
     st.markdown("---")
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["📍 Region Analysis", "👤 Instructor Analysis", "📚 Grade Analysis", "📊 Program Type Analysis", "👥 Student Participation", "🏫 School Analysis", "💰 Donor Analysis", "🔬 Subject Analysis"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(["📍 Region Analysis", "👤 Instructor Analysis", "📚 Grade Analysis", "📊 Program Type Analysis", "👥 Student Participation", "🏫 School Analysis", "💰 Donor Analysis", "🔬 Subject Analysis", "📅 Month Analysis"])
     
     # Placeholder for subject_stats for download section
     subject_stats = None
@@ -705,12 +941,15 @@ if uploaded_file is not None:
         st.markdown("---")
         st.subheader("📋 Complete Instructor List - Assessment Count")
         
-        # FIX APPLIED: Correctly calculate assessments using Date_Post
+        # FIX: Ensure a robust Assessment Session Key is used for counting distinct sessions.
+        # This key is necessary to prevent overcounting if one student appears on multiple rows
+        # for what is essentially the same assessment session.
         filtered_df['Assessment_Session_Key'] = (
+            filtered_df['Student Id'].astype(str) + '_' + # Added Student Id to match the logic in Key Metrics
             filtered_df['Content Id'].astype(str) + '_' + 
             filtered_df['Class'].astype(str) + '_' + 
             filtered_df['School Name'].fillna('NA').astype(str) + '_' +
-            filtered_df['Date_Post'].astype(str) # Added Date_Post
+            filtered_df['Date_Post'].astype(str) 
         )
         
         # Calculate number of assessments (using the session key) per instructor
@@ -1443,13 +1682,20 @@ if uploaded_file is not None:
             subject_stats = tab8_subject_analysis(filtered_df)
         else:
             st.info("No data to display after applying filters.")
+            
+    # ===== TAB 9: MONTH ANALYSIS (NEW) =====
+    with tab9:
+        if not filtered_df.empty:
+            tab9_month_analysis(filtered_df)
+        else:
+            st.info("No data to display after applying filters.")
 
     
     # ===== DOWNLOAD SECTION (UNCHANGED) =====
     st.markdown("---")
     st.subheader("📥 Download Analysis Reports")
     
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
     
     with col1:
         region_csv = region_stats.to_csv(index=False)
@@ -1495,6 +1741,46 @@ if uploaded_file is not None:
             subject_csv_final = subject_csv_final.sort_values('Subject')
             final_csv_output = subject_csv_final.to_csv(index=False)
             st.download_button("Download Subject Analysis", final_csv_output, "subject_analysis_summary.csv", "text/csv")
+            
+    with col7:
+        # Add the new Month Analysis download button (must use the float-based table)
+        # Check if month_perf_stats was created successfully in tab9_month_analysis
+        try:
+            # Re-generate the full summary table to ensure availability for download
+            # This is a good practice if data is only generated inside a tab block.
+            month_perf_stats = filtered_df.groupby(['Month_Num', 'Month']).agg(
+                Avg_Pre_Score_Raw=('Pre_Score', 'mean'),
+                Avg_Post_Score_Raw=('Post_Score', 'mean')
+            ).reset_index()
+            month_perf_stats['Avg Pre Score %'] = (month_perf_stats['Avg_Pre_Score_Raw'] / 5) * 100
+            month_perf_stats['Avg Post Score %'] = (month_perf_stats['Avg_Post_Score_Raw'] / 5) * 100
+            
+            filtered_df['Assessment_Key'] = (
+                filtered_df['Student Id'].astype(str) + '_' + 
+                filtered_df['Content Id'].astype(str) + '_' + 
+                filtered_df['Class'].astype(str) + '_' + 
+                filtered_df['School Name'].fillna('NA').astype(str) + '_' +
+                filtered_df['Date_Post'].astype(str)
+            )
+            month_assessments = filtered_df.groupby(['Month_Num', 'Month'])['Assessment_Key'].nunique().reset_index()
+            month_assessments.columns = ['Month_Num', 'Month', 'Number of Assessments']
+            month_students = filtered_df.groupby(['Month_Num', 'Month'])['Student Id'].nunique().reset_index()
+            month_students.columns = ['Month_Num', 'Month', 'Number of Unique Students']
+            
+            full_month_summary = month_perf_stats.merge(
+                month_assessments[['Month', 'Number of Assessments']], 
+                on='Month', 
+                how='left'
+            ).merge(
+                month_students[['Month', 'Number of Unique Students']], 
+                on='Month', 
+                how='left'
+            ).sort_values('Month_Num')
+            
+            month_csv = full_month_summary.to_csv(index=False)
+            st.download_button("Download Month Analysis", month_csv, "month_analysis_summary.csv", "text/csv")
+        except Exception:
+            pass # Skip if month data generation failed or filtered_df is empty
 
 
 else:
@@ -1517,7 +1803,7 @@ else:
     - `Instructor Login Id` - Login ID of instructor
     - `Program Type` - Program type code
     - `Content Id` - Assessment/Content Identifier
-    - `Date_Post` - Assessment Date (Required for tracking unique tests)
+    - **`Date_Post` - Assessment Date (Required for tracking unique tests and MONTH analysis)**
     
     **Pre-Session (Questions & Answers):**
     - `Q1`, `Q2`, `Q3`, `Q4`, `Q5` - Student responses
