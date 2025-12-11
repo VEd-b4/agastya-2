@@ -377,13 +377,26 @@ if uploaded_file is not None:
             
             # Show cleaning summary
             st.success("✅ Data cleaned successfully!")
-            col1, col2, col3 = st.columns(3)
+            
+            # Calculate Wastage Rate
+            records_removed = initial_count - cleaned_count
+            if initial_count > 0:
+                wastage_rate = (records_removed / initial_count) * 100
+                wastage_rate_str = f"{wastage_rate:.1f}%"
+            else:
+                wastage_rate = 0
+                wastage_rate_str = "0.0%"
+            
+            # Update the column layout to fit the new metric
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("Initial Records", initial_count)
             with col2:
-                st.metric("Records Removed", initial_count - cleaned_count)
+                st.metric("Records Removed", records_removed)
             with col3:
                 st.metric("Final Records", cleaned_count)
+            with col4:
+                st.metric("Wastage Rate", wastage_rate_str, delta=f"{wastage_rate:.1f}% loss") # Use delta to highlight it as a loss rate
             
             # Option to download cleaned data
             st.markdown("---")
