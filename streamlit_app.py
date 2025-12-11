@@ -114,7 +114,7 @@ def tab8_subject_analysis(df):
     subject_stats['Avg Post Score %'] = (subject_stats['Avg_Post_Score_Raw'] / 5) * 100
     subject_stats['Improvement %'] = subject_stats['Avg Post Score %'] - subject_stats['Avg Pre Score %']
     
-    # Sort in ascending order of PRE Score % (MODIFIED)
+    # Sort in ascending order of PRE Score %
     subject_stats = subject_stats.sort_values('Avg Pre Score %', ascending=True)
     
     # --- Visualization: Performance (Overall) ---
@@ -156,7 +156,7 @@ def tab8_subject_analysis(df):
         paper_bgcolor='#1e1e1e',
         font=dict(color='white'),
         yaxis=dict(range=[0, 100], gridcolor='#404040'),
-        xaxis=dict(gridcolor='#404040')
+        xaxis=dict(type='category', gridcolor='#404040') # Force category type
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -183,7 +183,7 @@ def tab8_subject_analysis(df):
     # Filter data for the selected region
     region_subject_data = subject_region_stats[subject_region_stats['Region'] == selected_region_for_subject].copy()
     
-    # Sort in ascending order of PRE Score % (MODIFIED)
+    # Sort in ascending order of PRE Score %
     region_subject_data = region_subject_data.sort_values('Pre_Score_Pct', ascending=True)
 
     fig_subj_region = go.Figure()
@@ -220,7 +220,7 @@ def tab8_subject_analysis(df):
         paper_bgcolor='#1e1e1e',
         font=dict(color='white'),
         yaxis=dict(range=[0, 100], gridcolor='#404040'),
-        xaxis=dict(gridcolor='#404040')
+        xaxis=dict(type='category', gridcolor='#404040') # Force category type
     )
     
     st.plotly_chart(fig_subj_region, use_container_width=True)
@@ -238,7 +238,7 @@ def tab8_subject_analysis(df):
     # Filter data for the selected subject
     subject_region_data = subject_region_stats[subject_region_stats['Subject'] == selected_subject_for_region].copy()
     
-    # Sort in ascending order of PRE Score % (MODIFIED)
+    # Sort in ascending order of PRE Score %
     subject_region_data = subject_region_data.sort_values('Pre_Score_Pct', ascending=True)
 
     fig_region_subj = go.Figure()
@@ -275,7 +275,7 @@ def tab8_subject_analysis(df):
         paper_bgcolor='#1e1e1e',
         font=dict(color='white'),
         yaxis=dict(range=[0, 100], gridcolor='#404040'),
-        xaxis=dict(gridcolor='#404040')
+        xaxis=dict(type='category', gridcolor='#404040') # Force category type
     )
     
     st.plotly_chart(fig_region_subj, use_container_width=True)
@@ -365,7 +365,7 @@ if uploaded_file is not None:
         try:
             raw_df = pd.read_excel(uploaded_file)
             
-            # Basic checks for required columns (FIX 1: Corrected undefined variable required_df)
+            # Basic checks for required columns
             required_check_cols = ['Date_Post', 'Donor', 'Subject', 'Region', 'Student Id', 'Class', 'Program Type', 'Q1', 'Q1_Post']
             missing_cols = [col for col in required_check_cols if col not in raw_df.columns]
             
@@ -507,7 +507,7 @@ if uploaded_file is not None:
         region_stats['Post_Score_Pct'] = (region_stats['Post_Score'] / 5) * 100
         region_stats['Improvement'] = region_stats['Post_Score_Pct'] - region_stats['Pre_Score_Pct']
         
-        # Sort in ascending order of PRE Score Pct (MODIFIED)
+        # Sort in ascending order of PRE Score Pct
         region_stats = region_stats.sort_values('Pre_Score_Pct', ascending=True)
         
         # Create line chart
@@ -547,7 +547,7 @@ if uploaded_file is not None:
             paper_bgcolor='#1e1e1e',
             font=dict(color='white'),
             yaxis=dict(range=[0, 100], gridcolor='#404040'),
-            xaxis=dict(gridcolor='#404040')
+            xaxis=dict(type='category', gridcolor='#404040') # Force category type
         )
         
         st.plotly_chart(fig, use_container_width=True)
@@ -567,7 +567,7 @@ if uploaded_file is not None:
                                              sorted(filtered_df['Program Type'].unique()))
         
         prog_data = program_region_stats[program_region_stats['Program Type'] == selected_program_type]
-        # Sort in ascending order of PRE Score Pct (MODIFIED)
+        # Sort in ascending order of PRE Score Pct
         prog_data = prog_data.sort_values('Pre_Score_Pct', ascending=True)
 
         fig2 = go.Figure()
@@ -602,7 +602,8 @@ if uploaded_file is not None:
             plot_bgcolor='#2b2b2b',
             paper_bgcolor='#1e1e1e',
             font=dict(color='white'),
-            yaxis=dict(range=[0, 100], gridcolor='#404040')
+            yaxis=dict(range=[0, 100], gridcolor='#404040'),
+            xaxis=dict(type='category', gridcolor='#404040') # Force category type
         )
         
         st.plotly_chart(fig2, use_container_width=True)
@@ -642,7 +643,7 @@ if uploaded_file is not None:
         # Show top N instructors
         top_n = st.slider("Number of instructors to display", 5, 20, 10)
         
-        # Get top N performers, then sort them ascending by PRE for the plot (MODIFIED)
+        # Get top N performers, then sort them ascending by PRE for the plot
         top_instructors = instructor_stats_for_table.nlargest(top_n, 'Post_Score_Pct').sort_values('Pre_Score_Pct', ascending=True)
 
         fig = go.Figure()
@@ -678,7 +679,7 @@ if uploaded_file is not None:
             paper_bgcolor='#1e1e1e',
             font=dict(color='white'),
             yaxis=dict(range=[0, 100], gridcolor='#404040'),
-            xaxis=dict(tickangle=-45, gridcolor='#404040')
+            xaxis=dict(tickangle=-45, gridcolor='#404040') # Category is default for names
         )
         
         st.plotly_chart(fig, use_container_width=True)
@@ -801,7 +802,7 @@ if uploaded_file is not None:
             st.metric("Total Unique Instructors", filtered_df['Instructor Name'].nunique())
             st.metric("Average per Region", f"{instructors_per_region['Number of Instructors'].mean():.1f}")
     
-    # ===== TAB 3: GRADE ANALYSIS (FIXED STRING FORMATTING) =====
+    # ===== TAB 3: GRADE ANALYSIS (FIXED STRING FORMATTING & SORTING) =====
     with tab3:
         st.header("Grade-wise Performance Analysis")
         
@@ -815,7 +816,7 @@ if uploaded_file is not None:
         grade_stats['Post_Score_Pct'] = (grade_stats['Post_Score'] / 5) * 100
         grade_stats['Improvement'] = grade_stats['Post_Score_Pct'] - grade_stats['Pre_Score_Pct']
         
-        # Sort in ascending order of PRE Score Pct (MODIFIED)
+        # Sort in ascending order of PRE Score Pct
         grade_stats = grade_stats.sort_values('Pre_Score_Pct', ascending=True)
 
         fig = go.Figure()
@@ -844,6 +845,9 @@ if uploaded_file is not None:
             textfont=dict(size=14)
         ))
         
+        # CRITICAL FIX: Explicitly set type='category' for x-axis.
+        # Otherwise, Plotly interprets '6', '7', '8' as numbers and auto-sorts them numerically, 
+        # destroying the score-based sorting order.
         fig.update_layout(
             title='Grade-wise Performance Comparison (Ascending by Pre Score)',
             xaxis_title='Grade',
@@ -853,7 +857,7 @@ if uploaded_file is not None:
             paper_bgcolor='#1e1e1e',
             font=dict(color='white'),
             yaxis=dict(range=[0, 100], gridcolor='#404040'),
-            xaxis=dict(gridcolor='#404040')
+            xaxis=dict(type='category', gridcolor='#404040') # Force category order
         )
         
         st.plotly_chart(fig, use_container_width=True)
@@ -946,14 +950,13 @@ if uploaded_file is not None:
         unique_regions_in_data = sorted(filtered_df['Region'].unique())
 
         # Selectbox to choose Region
-        # FIX 2: Corrected the filtering logic and variable usage
         selected_region_for_prog = st.selectbox("Select Region to compare Programs", 
                                              unique_regions_in_data, key='prog_region_viz_select')
         
-        # Filter data based on selection (FIX: Filter by the correctly selected REGION)
+        # Filter data based on selection
         region_data = program_region_stats[program_region_stats['Region'] == selected_region_for_prog].copy()
         
-        # Sort in ascending order of PRE Score Pct (MODIFIED)
+        # Sort in ascending order of PRE Score Pct
         region_data = region_data.sort_values('Pre_Score_Pct', ascending=True)
 
         # Create Line/Marker Chart (Similar to Tab 1 style)
@@ -990,7 +993,7 @@ if uploaded_file is not None:
             paper_bgcolor='#1e1e1e',
             font=dict(color='white'),
             yaxis=dict(range=[0, 110], gridcolor='#404040'),
-            xaxis=dict(gridcolor='#404040')
+            xaxis=dict(type='category', gridcolor='#404040') # Force category type
         )
         
         st.plotly_chart(fig_prog_region, use_container_width=True)
@@ -1304,7 +1307,6 @@ if uploaded_file is not None:
         # 2. Calculate percentages (These are FLOAT columns)
         donor_stats['Avg Pre Score %'] = (donor_stats['Avg_Pre_Score_Raw'] / 5) * 100
         donor_stats['Avg Post Score %'] = (donor_stats['Avg_Post_Score_Raw'] / 5) * 100
-        donor_stats['Improvement %'] = donor_stats['Avg Post Score %'] - donor_stats['Avg Post Score %'] # <-- ERROR IN LOGIC, fixed calculation
         donor_stats['Improvement %'] = donor_stats['Avg Post Score %'] - donor_stats['Avg Pre Score %']
         
         # 3. Format columns for display - CREATE A COPY FOR DISPLAY
