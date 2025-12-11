@@ -183,41 +183,56 @@ def tab8_subject_analysis(df):
     # ====================================================================
     st.subheader("🗺️ Subject Performance within a Selected Region")
     
+    # CHANGED TO MULTI-SELECT
     unique_regions = sorted(df['Region'].unique())
-    selected_region_for_subject = st.selectbox("Select Region for Subject Breakdown", unique_regions, key='region_subject_select')
+    selected_regions_for_subject = st.multiselect("Select Region(s) for Subject Breakdown", unique_regions, default=unique_regions, key='region_subject_select')
 
-    # Filter data for the selected region
-    region_subject_data = subject_region_stats[subject_region_stats['Region'] == selected_region_for_subject].copy()
+    # Filter data for the selected region(s)
+    region_subject_data = subject_region_stats[subject_region_stats['Region'].isin(selected_regions_for_subject)].copy()
     
-    # Sort in ascending order of PRE Score %
-    region_subject_data = region_subject_data.sort_values('Pre_Score_Pct', ascending=True)
-
+    # Create the multi-trace figure
     fig_subj_region = go.Figure()
-    
-    fig_subj_region.add_trace(go.Scatter(
-        x=region_subject_data['Subject'],
-        y=region_subject_data['Pre_Score_Pct'],
-        mode='lines+markers+text',
-        name='Pre-Session Average',
-        line=dict(color='#8e44ad', width=3),
-        marker=dict(size=10),
-        text=[f"{val:.0f}%" for val in region_subject_data['Pre_Score_Pct']],
-        textposition='top center'
-    ))
-    
-    fig_subj_region.add_trace(go.Scatter(
-        x=region_subject_data['Subject'],
-        y=region_subject_data['Post_Score_Pct'],
-        mode='lines+markers+text',
-        name='Post-Session Average',
-        line=dict(color='#f39c12', width=3),
-        marker=dict(size=10),
-        text=[f"{val:.0f}%" for val in region_subject_data['Post_Score_Pct']],
-        textposition='top center'
-    ))
-    
+    color_scale = px.colors.qualitative.Plotly 
+    color_index = 0
+
+    for region in selected_regions_for_subject:
+        # Filter for the specific region's data
+        single_region_data = region_subject_data[region_subject_data['Region'] == region].copy()
+        
+        # Sort in ascending order of PRE Score % for consistent axis
+        single_region_data = single_region_data.sort_values('Pre_Score_Pct', ascending=True)
+
+        base_color = color_scale[color_index % len(color_scale)]
+
+        # Pre-Session
+        fig_subj_region.add_trace(go.Scatter(
+            x=single_region_data['Subject'],
+            y=single_region_data['Pre_Score_Pct'],
+            mode='lines+markers',
+            name=f'{region} (Pre)',
+            line=dict(color=base_color, width=3, dash='dot'),
+            marker=dict(size=10, symbol='circle'),
+            hovertemplate = f'<b>Region:</b> {region}<br><b>Subject:</b> %{{x}}<br><b>Pre Score:</b> %{{y:.1f}}%<extra></extra>'
+        ))
+        
+        # Post-Session
+        fig_subj_region.add_trace(go.Scatter(
+            x=single_region_data['Subject'],
+            y=single_region_data['Post_Score_Pct'],
+            mode='lines+markers',
+            name=f'{region} (Post)',
+            line=dict(color=base_color, width=3, dash='solid'),
+            marker=dict(size=10, symbol='square'),
+            hovertemplate = f'<b>Region:</b> {region}<br><b>Subject:</b> %{{x}}<br><b>Post Score:</b> %{{y:.1f}}%<extra></extra>'
+        ))
+        
+        color_index += 1
+
+    # Title adjustment for multi-select
+    title_regions = ", ".join(selected_regions_for_subject) if len(selected_regions_for_subject) <= 3 else f"{len(selected_regions_for_subject)} Regions"
+
     fig_subj_region.update_layout(
-        title=f'Subject Performance in **{selected_region_for_subject}** (Ascending by Pre Score)',
+        title=f'Subject Performance Comparison for **{title_regions}**',
         xaxis_title='Subject',
         yaxis_title='Average Score (%)',
         hovermode='x unified',
@@ -238,41 +253,56 @@ def tab8_subject_analysis(df):
     # ====================================================================
     st.subheader("📍 Region Performance for a Selected Subject")
     
+    # CHANGED TO MULTI-SELECT
     unique_subjects = sorted(df['Subject'].unique())
-    selected_subject_for_region = st.selectbox("Select Subject for Region Breakdown", unique_subjects, key='subject_region_select')
+    selected_subjects_for_region = st.multiselect("Select Subject(s) for Region Breakdown", unique_subjects, default=unique_subjects, key='subject_region_select')
 
-    # Filter data for the selected subject
-    subject_region_data = subject_region_stats[subject_region_stats['Subject'] == selected_subject_for_region].copy()
+    # Filter data for the selected subject(s)
+    subject_region_data_multi = subject_region_stats[subject_region_stats['Subject'].isin(selected_subjects_for_region)].copy()
     
-    # Sort in ascending order of PRE Score %
-    subject_region_data = subject_region_data.sort_values('Pre_Score_Pct', ascending=True)
-
+    # Create the multi-trace figure
     fig_region_subj = go.Figure()
+    color_scale = px.colors.qualitative.Plotly 
+    color_index = 0
+
+    for subject in selected_subjects_for_region:
+        # Filter for the specific subject's data
+        single_subject_data = subject_region_data_multi[subject_region_data_multi['Subject'] == subject].copy()
+        
+        # Sort in ascending order of PRE Score %
+        single_subject_data = single_subject_data.sort_values('Region', ascending=True)
+
+        base_color = color_scale[color_index % len(color_scale)]
+        
+        # Pre-Session
+        fig_region_subj.add_trace(go.Scatter(
+            x=single_subject_data['Region'],
+            y=single_subject_data['Pre_Score_Pct'],
+            mode='lines+markers',
+            name=f'{subject} (Pre)',
+            line=dict(color=base_color, width=3, dash='dot'),
+            marker=dict(size=10, symbol='circle'),
+            hovertemplate = f'<b>Subject:</b> {subject}<br><b>Region:</b> %{{x}}<br><b>Pre Score:</b> %{{y:.1f}}%<extra></extra>'
+        ))
+        
+        # Post-Session
+        fig_region_subj.add_trace(go.Scatter(
+            x=single_subject_data['Region'],
+            y=single_subject_data['Post_Score_Pct'],
+            mode='lines+markers',
+            name=f'{subject} (Post)',
+            line=dict(color=base_color, width=3, dash='solid'),
+            marker=dict(size=10, symbol='square'),
+            hovertemplate = f'<b>Subject:</b> {subject}<br><b>Region:</b> %{{x}}<br><b>Post Score:</b> %{{y:.1f}}%<extra></extra>'
+        ))
+        
+        color_index += 1
     
-    fig_region_subj.add_trace(go.Scatter(
-        x=subject_region_data['Region'],
-        y=subject_region_data['Pre_Score_Pct'],
-        mode='lines+markers+text',
-        name='Pre-Session Average',
-        line=dict(color='#1abc9c', width=3),
-        marker=dict(size=10),
-        text=[f"{val:.0f}%" for val in subject_region_data['Pre_Score_Pct']],
-        textposition='top center'
-    ))
-    
-    fig_region_subj.add_trace(go.Scatter(
-        x=subject_region_data['Region'],
-        y=subject_region_data['Post_Score_Pct'],
-        mode='lines+markers+text',
-        name='Post-Session Average',
-        line=dict(color='#e74c3c', width=3),
-        marker=dict(size=10),
-        text=[f"{val:.0f}%" for val in subject_region_data['Post_Score_Pct']],
-        textposition='top center'
-    ))
-    
+    # Title adjustment for multi-select
+    title_subjects = ", ".join(selected_subjects_for_region) if len(selected_subjects_for_region) <= 3 else f"{len(selected_subjects_for_region)} Subjects"
+
     fig_region_subj.update_layout(
-        title=f'Region Performance in **{selected_subject_for_region}** (Ascending by Pre Score)',
+        title=f'Region Performance Comparison for **{title_subjects}**',
         xaxis_title='Region',
         yaxis_title='Average Score (%)',
         hovermode='x unified',
@@ -355,7 +385,7 @@ def tab8_subject_analysis(df):
     
     return subject_stats # Return for use in the main download section
 
-# ===== MAIN APPLICATION (UNCHANGED) =====
+# ===== MAIN APPLICATION (MODIFIED FILTERS) =====
 
 # Title and description
 st.title("📊 Student Assessment Analysis Platform")
@@ -418,32 +448,34 @@ if uploaded_file is not None:
             st.error(f"Error processing file: {str(e)}")
             st.stop()
     
-    # Sidebar filters
-    st.sidebar.header("🔍 Filters")
+    # Sidebar filters (MODIFIED TO MULTI-SELECT)
+    st.sidebar.header("🔍 Filters (Multi-Select Enabled)")
     
-    # IMPORTANT NOTE TO USER: Check these filters!
-    st.sidebar.warning("❗️ Ensure ALL filters are set to 'All' for full Donor Analysis.")
+    # WARNING REMOVED as multi-select handles 'All' by default selection
 
     # Region filter
-    all_regions = ['All'] + sorted(df['Region'].unique().tolist())
-    selected_region = st.sidebar.selectbox("Select Region", all_regions)
+    all_regions = sorted(df['Region'].unique().tolist())
+    # Defaulting to all regions enables full analysis unless manually filtered
+    selected_regions = st.sidebar.multiselect("Select Region(s)", all_regions, default=all_regions)
     
     # Program Type filter
-    all_programs = ['All'] + sorted(df['Program Type'].unique().tolist())
-    selected_program = st.sidebar.selectbox("Select Program Type", all_programs)
+    all_programs = sorted(df['Program Type'].unique().tolist())
+    selected_programs = st.sidebar.multiselect("Select Program Type(s)", all_programs, default=all_programs)
     
     # Parent Class filter
-    all_classes = ['All'] + sorted(df['Parent_Class'].unique().tolist())
-    selected_class = st.sidebar.selectbox("Select Grade", all_classes)
+    all_classes = sorted(df['Parent_Class'].unique().tolist())
+    selected_classes = st.sidebar.multiselect("Select Grade(s)", all_classes, default=all_classes)
     
-    # Apply filters
+    # Apply filters (MODIFIED TO .isin() LOGIC)
     filtered_df = df.copy()
-    if selected_region != 'All':
-        filtered_df = filtered_df[filtered_df['Region'] == selected_region]
-    if selected_program != 'All':
-        filtered_df = filtered_df[filtered_df['Program Type'] == selected_program]
-    if selected_class != 'All':
-        filtered_df = filtered_df[filtered_df['Parent_Class'] == selected_class]
+    
+    # Use .isin() for multi-selection
+    if selected_regions:
+        filtered_df = filtered_df[filtered_df['Region'].isin(selected_regions)]
+    if selected_programs:
+        filtered_df = filtered_df[filtered_df['Program Type'].isin(selected_programs)]
+    if selected_classes:
+        filtered_df = filtered_df[filtered_df['Parent_Class'].isin(selected_classes)]
     
     # ===== KEY METRICS (UNCHANGED) =====
     st.markdown("---")
@@ -514,7 +546,7 @@ if uploaded_file is not None:
     # Placeholder for subject_stats for download section
     subject_stats = None
 
-    # ===== TAB 1: REGION ANALYSIS (UNCHANGED) =====
+    # ===== TAB 1: REGION ANALYSIS (MODIFIED PROGRAM TYPE ANALYSIS) =====
     with tab1:
         st.header("Region-wise Performance Analysis")
         
@@ -574,8 +606,8 @@ if uploaded_file is not None:
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # Region by Program Type
-        st.subheader("Region Analysis by Program Type")
+        # Region by Program Type (Multi-Select Version)
+        st.subheader("Region Analysis by Program Type (Multi-Select)")
         
         program_region_stats = filtered_df.groupby(['Region', 'Program Type']).agg({
             'Pre_Score': 'mean',
@@ -585,47 +617,67 @@ if uploaded_file is not None:
         program_region_stats['Pre_Score_Pct'] = (program_region_stats['Pre_Score'] / 5) * 100
         program_region_stats['Post_Score_Pct'] = (program_region_stats['Post_Score'] / 5) * 100
         
-        selected_program_type = st.selectbox("Select Program Type for Detailed View", 
-                                             sorted(filtered_df['Program Type'].unique()))
+        # Change selectbox to multiselect
+        unique_programs = sorted(filtered_df['Program Type'].unique())
+        selected_program_types = st.multiselect("Select Program Type(s) for Detailed View", 
+                                             unique_programs, default=unique_programs, key='tab1_program_select')
         
-        prog_data = program_region_stats[program_region_stats['Program Type'] == selected_program_type]
-        # Sort in ascending order of PRE Score Pct
-        prog_data = prog_data.sort_values('Pre_Score_Pct', ascending=True)
-
         fig2 = go.Figure()
         
-        fig2.add_trace(go.Scatter(
-            x=prog_data['Region'],
-            y=prog_data['Pre_Score_Pct'],
-            mode='lines+markers+text',
-            name='Pre-Session',
-            line=dict(color='#3498db', width=3),
-            marker=dict(size=10),
-            text=[f"{val:.0f}%" for val in prog_data['Pre_Score_Pct']],
-            textposition='top center'
-        ))
-        
-        fig2.add_trace(go.Scatter(
-            x=prog_data['Region'],
-            y=prog_data['Post_Score_Pct'],
-            mode='lines+markers+text',
-            name='Post-Session',
-            line=dict(color='#e74c3c', width=3),
-            marker=dict(size=10),
-            text=[f"{val:.0f}%" for val in prog_data['Post_Score_Pct']],
-            textposition='top center'
-        ))
-        
+        # Define a list of distinct colors for the lines
+        color_scale = px.colors.qualitative.Plotly 
+        color_index = 0
+
+        # Iterate over selected programs and add traces for each
+        for program in selected_program_types:
+            prog_data = program_region_stats[program_region_stats['Program Type'] == program]
+            # Sort by Region Name for consistent X-axis order when comparing multiple programs
+            prog_data = prog_data.sort_values('Region', ascending=True) 
+
+            # Get the base color
+            base_color = color_scale[color_index % len(color_scale)]
+            
+            # Pre-Session Line (dotted)
+            fig2.add_trace(go.Scatter(
+                x=prog_data['Region'],
+                y=prog_data['Pre_Score_Pct'],
+                mode='lines+markers',
+                name=f'{program} (Pre)',
+                line=dict(color=base_color, width=3, dash='dot'), 
+                marker=dict(size=10, symbol='circle'),
+                hovertemplate = '<b>Region:</b> %{x}<br><b>Pre Score:</b> %{y:.1f}%<br>'
+            ))
+            
+            # Post-Session Line (solid)
+            fig2.add_trace(go.Scatter(
+                x=prog_data['Region'],
+                y=prog_data['Post_Score_Pct'],
+                mode='lines+markers',
+                name=f'{program} (Post)',
+                line=dict(color=base_color, width=3, dash='solid'), 
+                marker=dict(size=10, symbol='square'),
+                hovertemplate = '<b>Region:</b> %{x}<br><b>Post Score:</b> %{y:.1f}%<br>'
+            ))
+            
+            color_index += 1 # Move to the next color
+
+        # Update Layout
+        if selected_program_types:
+            title_programs = ", ".join(selected_program_types) if len(selected_program_types) <= 3 else f"{len(selected_program_types)} Programs"
+        else:
+            title_programs = "No Programs Selected"
+            
         fig2.update_layout(
-            title=f'{selected_program_type} - Region-wise Performance (Ascending by Pre Score)',
+            title=f'Region-wise Performance Comparison for {title_programs}',
             xaxis_title='Region',
             yaxis_title='Average Score (%)',
-            height=400,
+            height=500,
             plot_bgcolor='#2b2b2b',
             paper_bgcolor='#1e1e1e',
             font=dict(color='white'),
             yaxis=dict(range=[0, 100], gridcolor='#404040'),
-            xaxis=dict(type='category', gridcolor='#404040') # Force category type
+            xaxis=dict(type='category', gridcolor='#404040'),
+            hovermode='x unified'
         )
         
         st.plotly_chart(fig2, use_container_width=True)
@@ -741,45 +793,27 @@ if uploaded_file is not None:
             Instructor_Login_Id=('Instructor Login Id', lambda x: x.mode()[0] if not x.mode().empty else x.iloc[0]),
             Assessment_Session_Key=('Assessment_Session_Key', 'nunique'), # This correctly counts distinct sessions
             Student_Id=('Student Id', 'count'),
-            Region=('Region', lambda x: x.mode()[0] if not x.mode().empty else x.iloc[0])  # Most common region
+            Region=('Region', lambda x: x.mode()[0] if not x.mode().empty else x.iloc[0]) # Most common region
         ).reset_index()
+
+        all_instructors.columns = ['Instructor Name', 'Login ID', 'Total Sessions', 'Total Assessments', 'Region']
+        all_instructors = all_instructors.sort_values('Total Assessments', ascending=False)
         
-        all_instructors.columns = ['Instructor Name', 'Instructor Login Id', 'Number of Assessments', 'Total Students', 'Primary Region']
-        all_instructors = all_instructors.sort_values('Number of Assessments', ascending=False)
+        st.dataframe(all_instructors, hide_index=True, use_container_width=True)
         
-        # Search functionality
-        search_instructor = st.text_input("🔍 Search for an instructor (Name or ID)", "")
-        
-        if search_instructor:
-            filtered_instructors = all_instructors[
-                all_instructors['Instructor Name'].str.contains(search_instructor, case=False, na=False) |
-                all_instructors['Instructor Login Id'].astype(str).str.contains(search_instructor, case=False, na=False)
-            ]
-        else:
-            filtered_instructors = all_instructors
-        
-        # FIX APPLIED: Calculate unique instructor count directly and use it for all metrics.
+        # Total metrics
         total_unique_instructors = filtered_df['Instructor Name'].nunique()
+        total_sessions = all_instructors['Total Sessions'].sum()
         
-        # Display summary metrics
         col1, col2, col3 = st.columns(3)
         with col1:
-            # FIX: Use the explicit unique count
-            st.metric("Total Instructors", total_unique_instructors) 
+            st.metric("Total Unique Instructors", total_unique_instructors)
         with col2:
-            st.metric("Avg Assessments per Instructor", f"{all_instructors['Number of Assessments'].mean():.1f}")
+            st.metric("Total Unique Assessment Sessions", total_sessions)
         with col3:
-            st.metric("Max Assessments by One Instructor", all_instructors['Number of Assessments'].max())
-        
-        # Display the full table
-        st.dataframe(
-            filtered_instructors,
-            hide_index=True,
-            use_container_width=True,
-            height=400
-        )
-        
-        # Download option for instructor assessment data
+            st.metric("Total Assessments Conducted", all_instructors['Total Assessments'].sum())
+
+        # Download button
         instructor_csv = all_instructors.to_csv(index=False)
         st.download_button(
             "📥 Download Complete Instructor Assessment List",
@@ -791,14 +825,12 @@ if uploaded_file is not None:
         # Instructors per Region
         st.markdown("---")
         st.subheader("👥 Number of Instructors per Region")
-        
         instructors_per_region = filtered_df.groupby('Region')['Instructor Name'].nunique().reset_index()
         instructors_per_region.columns = ['Region', 'Number of Instructors']
         instructors_per_region = instructors_per_region.sort_values('Number of Instructors', ascending=False)
         
         # Create bar chart
         fig_inst_region = go.Figure()
-        
         fig_inst_region.add_trace(go.Bar(
             x=instructors_per_region['Region'],
             y=instructors_per_region['Number of Instructors'],
@@ -828,13 +860,12 @@ if uploaded_file is not None:
             st.dataframe(instructors_per_region, hide_index=True, use_container_width=True)
         with col2:
             # FIX: Use the explicit unique count
-            st.metric("Total Unique Instructors", total_unique_instructors) 
+            st.metric("Total Unique Instructors", total_unique_instructors)
             st.metric("Average per Region", f"{instructors_per_region['Number of Instructors'].mean():.1f}")
-    
+
     # ===== TAB 3: GRADE ANALYSIS (UNCHANGED) =====
     with tab3:
         st.header("Grade-wise Performance Analysis")
-        
         grade_stats = filtered_df.groupby('Parent_Class').agg({
             'Pre_Score': 'mean',
             'Post_Score': 'mean',
@@ -859,7 +890,7 @@ if uploaded_file is not None:
             marker=dict(size=12),
             text=[f"{val:.0f}%" for val in grade_stats['Pre_Score_Pct']],
             textposition='top center',
-            textfont=dict(size=14)
+            textfont=dict(size=14, color='#1abc9c')
         ))
         
         fig.add_trace(go.Scatter(
@@ -867,49 +898,73 @@ if uploaded_file is not None:
             y=grade_stats['Post_Score_Pct'],
             mode='lines+markers+text',
             name='Post-Session',
-            line=dict(color='#e67e22', width=3),
+            line=dict(color='#f1c40f', width=3),
             marker=dict(size=12),
             text=[f"{val:.0f}%" for val in grade_stats['Post_Score_Pct']],
             textposition='top center',
-            textfont=dict(size=14)
+            textfont=dict(size=14, color='#f1c40f')
         ))
         
-        # CRITICAL FIX: Explicitly set type='category' for x-axis.
-        # Otherwise, Plotly interprets '6', '7', '8' as numbers and auto-sorts them numerically, 
-        # destroying the score-based sorting order.
         fig.update_layout(
             title='Grade-wise Performance Comparison (Ascending by Pre Score)',
             xaxis_title='Grade',
             yaxis_title='Average Score (%)',
+            hovermode='x unified',
             height=500,
             plot_bgcolor='#2b2b2b',
             paper_bgcolor='#1e1e1e',
             font=dict(color='white'),
             yaxis=dict(range=[0, 100], gridcolor='#404040'),
-            xaxis=dict(type='category', gridcolor='#404040') # Force category order
+            xaxis=dict(type='category', gridcolor='#404040') # Force category type
         )
         
         st.plotly_chart(fig, use_container_width=True)
+
+        # Grade-wise participation (Bar Chart)
+        st.markdown("---")
+        st.subheader("Student Participation by Grade")
         
-        # Grade statistics table
-        st.subheader("Detailed Grade Statistics")
-        # Create a copy for DISPLAY formatting only
-        display_stats = grade_stats.copy() 
+        # Ensure grade_stats is sorted by grade number for the bar chart
+        grade_stats_participation = grade_stats.sort_values('Parent_Class')
         
-        # Rename the columns for display clarity
-        display_stats.columns = ['Grade', 'Pre Score', 'Post Score', 'Students', 'Pre %', 'Post %', 'Improvement %']
+        fig_part = go.Figure()
+        fig_part.add_trace(go.Bar(
+            x=grade_stats_participation['Parent_Class'],
+            y=grade_stats_participation['Student Id'],
+            marker_color='#3498db',
+            text=grade_stats_participation['Student Id'],
+            textposition='outside'
+        ))
         
-        # Select and reorder columns
-        display_stats = display_stats[['Grade', 'Pre %', 'Post %', 'Improvement %', 'Students']]
+        fig_part.update_layout(
+            title='Total Assessments Conducted by Grade',
+            xaxis_title='Grade',
+            yaxis_title='Total Assessments',
+            height=400,
+            plot_bgcolor='#2b2b2b',
+            paper_bgcolor='#1e1e1e',
+            font=dict(color='white'),
+            yaxis=dict(gridcolor='#404040'),
+            xaxis=dict(type='category', gridcolor='#404040')
+        )
+        st.plotly_chart(fig_part, use_container_width=True)
         
-        # APPLY STRING FORMATTING (This line should be the only place where the float columns become strings)
-        display_stats['Pre %'] = display_stats['Pre %'].apply(lambda x: f"{x:.1f}%")
-        display_stats['Post %'] = display_stats['Post %'].apply(lambda x: f"{x:.1f}%")
-        display_stats['Improvement %'] = display_stats['Improvement %'].apply(lambda x: f"{x:.1f}%")
+        # Detailed table
+        st.markdown("---")
+        st.subheader("📋 Detailed Grade Metrics")
+        display_grade_stats = grade_stats.copy()
+        display_grade_stats.columns = ['Grade', 'Avg Pre Score', 'Avg Post Score', 'Total Assessments', 'Pre %', 'Post %', 'Improvement %']
         
-        st.dataframe(display_stats, hide_index=True, use_container_width=True)
-    
-    # ===== TAB 4: PROGRAM TYPE ANALYSIS (UNCHANGED) =====
+        # Format columns for display
+        display_grade_stats['Pre %'] = display_grade_stats['Pre %'].apply(lambda x: f"{x:.1f}%")
+        display_grade_stats['Post %'] = display_grade_stats['Post %'].apply(lambda x: f"{x:.1f}%")
+        display_grade_stats['Improvement %'] = display_grade_stats['Improvement %'].apply(lambda x: f"{x:.1f}%")
+        
+        # Select and reorder columns for user display
+        display_grade_stats = display_grade_stats[['Grade', 'Total Assessments', 'Pre %', 'Post %', 'Improvement %']]
+        st.dataframe(display_grade_stats, hide_index=True, use_container_width=True)
+
+    # ===== TAB 4: PROGRAM TYPE ANALYSIS (MODIFIED REGION ANALYSIS) =====
     with tab4:
         st.header("Program Type Performance Analysis")
         
@@ -926,7 +981,7 @@ if uploaded_file is not None:
         
         # MODIFIED: Sort in ascending order of PRE Score Pct
         program_stats = program_stats.sort_values('Pre_Score_Pct', ascending=True)
-        
+
         fig = go.Figure()
         
         fig.add_trace(go.Bar(
@@ -962,9 +1017,9 @@ if uploaded_file is not None:
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # 2. Program Analysis by Region
+        # 2. Program Analysis by Region (Multi-Select Version)
         st.markdown("---")
-        st.subheader("Program Analysis by Region")
+        st.subheader("Program Analysis by Region (Multi-Select)")
         
         # Group by Program Type AND Region
         program_region_stats = filtered_df.groupby(['Program Type', 'Region']).agg({
@@ -978,74 +1033,89 @@ if uploaded_file is not None:
         
         # Get list of unique regions in the filtered data
         unique_regions_in_data = sorted(filtered_df['Region'].unique())
-
-        # Selectbox to choose Region
-        selected_region_for_prog = st.selectbox("Select Region to compare Programs", 
-                                             unique_regions_in_data, key='prog_region_viz_select')
         
-        # Filter data based on selection
-        region_data = program_region_stats[program_region_stats['Region'] == selected_region_for_prog].copy()
+        # Change selectbox to multiselect
+        selected_regions_for_prog = st.multiselect("Select Region(s) to compare Programs", 
+                                                   unique_regions_in_data, 
+                                                   default=unique_regions_in_data, 
+                                                   key='prog_region_viz_select_multi')
         
-        # Sort in ascending order of PRE Score Pct
-        region_data = region_data.sort_values('Pre_Score_Pct', ascending=True)
-
-        # Create Line/Marker Chart (Similar to Tab 1 style)
         fig_prog_region = go.Figure()
         
-        fig_prog_region.add_trace(go.Scatter(
-            x=region_data['Program Type'],
-            y=region_data['Pre_Score_Pct'],
-            mode='lines+markers+text',
-            name='Pre-Session',
-            line=dict(color='#1abc9c', width=3),
-            marker=dict(size=10),
-            text=[f"{val:.0f}%" for val in region_data['Pre_Score_Pct']],
-            textposition='top center'
-        ))
-        
-        fig_prog_region.add_trace(go.Scatter(
-            x=region_data['Program Type'],
-            y=region_data['Post_Score_Pct'],
-            mode='lines+markers+text',
-            name='Post-Session',
-            line=dict(color='#e67e22', width=3),
-            marker=dict(size=10),
-            text=[f"{val:.0f}%" for val in region_data['Post_Score_Pct']],
-            textposition='top center'
-        ))
-        
+        # Define a list of distinct colors for the lines
+        color_scale = px.colors.qualitative.Plotly 
+        color_index = 0
+
+        # Iterate over selected regions and add traces for each
+        for region in selected_regions_for_prog:
+            region_data = program_region_stats[program_region_stats['Region'] == region]
+            # Sort by Program Type for consistent X-axis order
+            region_data = region_data.sort_values('Program Type', ascending=True) 
+
+            # Get the base color
+            base_color = color_scale[color_index % len(color_scale)]
+            
+            # Pre-Session Line (dotted)
+            fig_prog_region.add_trace(go.Scatter(
+                x=region_data['Program Type'],
+                y=region_data['Pre_Score_Pct'],
+                mode='lines+markers',
+                name=f'{region} (Pre)',
+                line=dict(color=base_color, width=3, dash='dot'),
+                marker=dict(size=10, symbol='circle'),
+                hovertemplate = '<b>Program:</b> %{x}<br><b>Pre Score:</b> %{y:.1f}%<br>'
+            ))
+            
+            # Post-Session Line (solid)
+            fig_prog_region.add_trace(go.Scatter(
+                x=region_data['Program Type'],
+                y=region_data['Post_Score_Pct'],
+                mode='lines+markers',
+                name=f'{region} (Post)',
+                line=dict(color=base_color, width=3, dash='solid'),
+                marker=dict(size=10, symbol='square'),
+                hovertemplate = '<b>Program:</b> %{x}<br><b>Post Score:</b> %{y:.1f}%<br>'
+            ))
+            
+            color_index += 1 # Move to the next color
+
+        # Update Layout
+        if selected_regions_for_prog:
+            title_regions = ", ".join(selected_regions_for_prog) if len(selected_regions_for_prog) <= 3 else f"{len(selected_regions_for_prog)} Regions"
+        else:
+            title_regions = "No Regions Selected"
+            
         fig_prog_region.update_layout(
-            title=f'Program Performance in {selected_region_for_prog} (Ascending by Pre Score)',
+            title=f'Program Performance Comparison for {title_regions}',
             xaxis_title='Program Type',
             yaxis_title='Average Score (%)',
-            height=450,
+            height=500,
             plot_bgcolor='#2b2b2b',
             paper_bgcolor='#1e1e1e',
             font=dict(color='white'),
-            yaxis=dict(range=[0, 110], gridcolor='#404040'),
-            xaxis=dict(type='category', gridcolor='#404040') # Force category type
+            yaxis=dict(range=[0, 100], gridcolor='#404040'),
+            xaxis=dict(type='category', gridcolor='#404040'),
+            hovermode='x unified'
         )
         
         st.plotly_chart(fig_prog_region, use_container_width=True)
         
-        # 3. Program stats table (Existing)
-        st.subheader("Detailed Program Type Statistics")
-        # Create a copy for DISPLAY formatting only
+        # 3. Detailed Program Metrics Table (Existing)
+        st.markdown("---")
+        st.subheader("📋 Detailed Program Type Metrics")
         display_prog = program_stats.copy()
+        display_prog.columns = ['Program Type', 'Avg Pre Score', 'Avg Post Score', 'Total Assessments', 'Pre %', 'Post %', 'Improvement %']
         
-        # Rename the columns for display clarity
-        display_prog.columns = ['Program', 'Pre Score', 'Post Score', 'Students', 'Pre %', 'Post %', 'Improvement %']
+        # Select and reorder columns for user display
+        display_prog = display_prog[['Program Type', 'Total Assessments', 'Pre %', 'Post %', 'Improvement %']]
         
-        # Select and reorder columns
-        display_prog = display_prog[['Program', 'Pre %', 'Post %', 'Improvement %', 'Students']]
-        
-        # APPLY STRING FORMATTING
+        # Format columns for display
         display_prog['Pre %'] = display_prog['Pre %'].apply(lambda x: f"{x:.1f}%")
         display_prog['Post %'] = display_prog['Post %'].apply(lambda x: f"{x:.1f}%")
         display_prog['Improvement %'] = display_prog['Improvement %'].apply(lambda x: f"{x:.1f}%")
-        
+
         st.dataframe(display_prog, hide_index=True, use_container_width=True)
-    
+
     # ===== TAB 5: STUDENT PARTICIPATION (UNCHANGED) =====
     with tab5:
         st.header("Student Participation Analysis")
@@ -1078,7 +1148,6 @@ if uploaded_file is not None:
             yaxis=dict(gridcolor='#404040'),
             xaxis=dict(gridcolor='#404040')
         )
-        
         st.plotly_chart(fig_grade, use_container_width=True)
         
         col1, col2 = st.columns(2)
@@ -1087,7 +1156,7 @@ if uploaded_file is not None:
         with col2:
             st.metric("Total Students Across All Grades", students_per_grade['Number of Students'].sum())
             st.metric("Average Students per Grade", f"{students_per_grade['Number of Students'].mean():.0f}")
-        
+
         # Students per Region
         st.markdown("---")
         st.subheader("📍 Students per Region")
@@ -1116,15 +1185,7 @@ if uploaded_file is not None:
             yaxis=dict(gridcolor='#404040'),
             xaxis=dict(gridcolor='#404040', tickangle=-45)
         )
-        
         st.plotly_chart(fig_region, use_container_width=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.dataframe(students_per_region, hide_index=True, use_container_width=True)
-        with col2:
-            st.metric("Total Regions", len(students_per_region))
-            st.metric("Average Students per Region", f"{students_per_region['Number of Students'].mean():.0f}")
         
         # Students per Program Type
         st.markdown("---")
@@ -1154,44 +1215,21 @@ if uploaded_file is not None:
             yaxis=dict(gridcolor='#404040'),
             xaxis=dict(gridcolor='#404040')
         )
-        
         st.plotly_chart(fig_program, use_container_width=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.dataframe(students_per_program, hide_index=True, use_container_width=True)
-        with col2:
-            st.metric("Total Program Types", len(students_per_program))
-            st.metric("Average Students per Program", f"{students_per_program['Number of Students'].mean():.0f}")
-        
-        # Combined breakdown: Region x Program Type
+
+        # Cross-Tabulation: Grade vs Region
         st.markdown("---")
-        st.subheader("🔄 Students by Region and Program Type")
-        
-        students_region_program = filtered_df.groupby(['Region', 'Program Type'])['Student Id'].nunique().reset_index()
-        students_region_program.columns = ['Region', 'Program Type', 'Number of Students']
-        
-        # Pivot table for better visualization
-        pivot_table = students_region_program.pivot(index='Region', columns='Program Type', values='Number of Students').fillna(0).astype(int)
-        
-        st.dataframe(pivot_table, use_container_width=True)
-        
-        # Combined breakdown: Grade x Region
-        st.markdown("---")
-        st.subheader("🔄 Students by Grade and Region")
-        
+        st.subheader("Cross-Tabulation: Students by Grade and Region")
         students_grade_region = filtered_df.groupby(['Parent_Class', 'Region'])['Student Id'].nunique().reset_index()
         students_grade_region.columns = ['Grade', 'Region', 'Number of Students']
         
         # Pivot table
         pivot_grade_region = students_grade_region.pivot(index='Grade', columns='Region', values='Number of Students').fillna(0).astype(int)
-        
         st.dataframe(pivot_grade_region, use_container_width=True)
-        
+
         # Download all participation data
         st.markdown("---")
         st.subheader("📥 Download Participation Reports")
-        
         col1, col2, col3 = st.columns(3)
         with col1:
             grade_csv = students_per_grade.to_csv(index=False)
@@ -1207,37 +1245,31 @@ if uploaded_file is not None:
     with tab6:
         st.header("School Analysis")
         st.markdown("### School Performance and Engagement Metrics")
-
         try:
             # Group by School Name and UDISE to get unique schools
             # Calculate metrics per school
             school_stats = filtered_df.groupby(['School Name', 'UDISE']).agg({
-                'Student Id': 'nunique',        # Number of students
-                'Content Id': 'nunique',        # Number of unique assessments
+                'Student Id': 'nunique', # Number of students
+                'Content Id': 'nunique', # Number of unique assessments
                 'Instructor Login Id': 'nunique', # Number of instructors
-                'Region': 'first'               # Region (assuming 1 region per school)
+                'Region': 'first' # Region (assuming 1 region per school)
             }).reset_index()
-            
             school_stats.columns = ['School Name', 'UDISE', 'Total Students', 'Unique Assessments', 'Total Instructors', 'Region']
             
             # Key Metrics
             col1, col2, col3, col4 = st.columns(4)
-            
             with col1:
                 st.metric("Total Schools", len(school_stats))
-            
             with col2:
                 avg_students = school_stats['Total Students'].mean()
                 st.metric("Avg Students/School", f"{avg_students:.1f}")
-                
             with col3:
                 avg_assessments = school_stats['Unique Assessments'].mean()
                 st.metric("Avg Assessments/School", f"{avg_assessments:.1f}")
-                
             with col4:
                 avg_instructors = school_stats['Total Instructors'].mean()
                 st.metric("Avg Instructors/School", f"{avg_instructors:.1f}")
-            
+
             st.markdown("---")
             
             # School List Table
@@ -1245,64 +1277,32 @@ if uploaded_file is not None:
             
             # Search filter for schools
             search_school = st.text_input("🔍 Search School (Name or UDISE)", "")
+            
+            # Filter the school stats based on search query
             if search_school:
-                display_schools = school_stats[
-                    school_stats['School Name'].str.contains(search_school, case=False, na=False) |
-                    school_stats['UDISE'].astype(str).str.contains(search_school, case=False, na=False)
+                search_term = search_school.upper().strip()
+                display_school_stats = school_stats[
+                    school_stats['School Name'].astype(str).str.upper().str.contains(search_term) |
+                    school_stats['UDISE'].astype(str).str.contains(search_term)
                 ]
             else:
-                display_schools = school_stats
-                
-            st.dataframe(display_schools, hide_index=True, use_container_width=True)
+                display_school_stats = school_stats
+
+            st.dataframe(display_school_stats, hide_index=True, use_container_width=True)
             
-            # Download button for school data
+            # Download Button
             school_csv = school_stats.to_csv(index=False)
             st.download_button(
-                "📥 Download School Analysis Data", 
-                school_csv, 
-                "school_analysis.csv", 
+                "📥 Download School Data (CSV)",
+                school_csv,
+                "school_data.csv",
                 "text/csv"
             )
             
-            st.markdown("---")
-            
-            # Graph: Number of Schools per Region
-            st.subheader("📊 Number of Schools per Region")
-            
-            schools_per_region = school_stats.groupby('Region')['School Name'].count().reset_index()
-            schools_per_region.columns = ['Region', 'Number of Schools']
-            schools_per_region = schools_per_region.sort_values('Number of Schools', ascending=False)
-            
-            fig_schools = go.Figure()
-            fig_schools.add_trace(go.Bar(
-                x=schools_per_region['Region'],
-                y=schools_per_region['Number of Schools'],
-                marker_color='#8e44ad',
-                text=schools_per_region['Number of Schools'],
-                textposition='outside',
-                textfont=dict(size=14, color='white')
-            ))
-            
-            fig_schools.update_layout(
-                title='Count of Unique Schools by Region',
-                xaxis_title='Region',
-                yaxis_title='Number of Schools',
-                height=450,
-                plot_bgcolor='#2b2b2b',
-                paper_bgcolor='#1e1e1e',
-                font=dict(color='white'),
-                yaxis=dict(gridcolor='#404040'),
-                xaxis=dict(gridcolor='#404040')
-            )
-            
-            st.plotly_chart(fig_schools, use_container_width=True)
-            
-        except KeyError as e:
-            st.error(f"Missing required columns for School Analysis: {e}")
-            st.warning("Please ensure your Excel file contains 'School Name' and 'UDISE' columns.")
-            school_stats = None # Set to None if error occurs to handle download later
+        except Exception as e:
+            st.error(f"Error generating school analysis: {str(e)}")
 
-    # ===== TAB 7: DONOR ANALYSIS (SIMPLIFIED AFTER DATA CLEANING) =====
+    # ===== TAB 7: DONOR ANALYSIS (UNCHANGED EXCEPT FOR DATA CLEANING) =====
     with tab7:
         st.header("Donor Performance Analysis")
         
@@ -1314,10 +1314,12 @@ if uploaded_file is not None:
         # Determine the DataFrame to use for the detailed analysis section.
         if selected_donor != 'All Donors':
             # *** SIMPLIFIED FIX: Uses exact match against the master 'df' as the data is now standardized to uppercase in clean_and_process_data ***
-            donor_filtered_df = df[
-                df['Donor'] == selected_donor
-            ].copy() 
-            
+            donor_filtered_df = df[ 
+                (df['Donor'] == selected_donor) & 
+                (df['Region'].isin(selected_regions)) &
+                (df['Program Type'].isin(selected_programs)) &
+                (df['Parent_Class'].isin(selected_classes))
+            ].copy()
             st.subheader(f"Metrics for Donor: **{selected_donor}**")
         else:
             # If 'All Donors' is selected, respect the global sidebar filters (filtered_df)
@@ -1327,12 +1329,10 @@ if uploaded_file is not None:
         if donor_filtered_df.empty:
             st.info(f"No data available for the selected donor/filters.")
             # Use continue/return or simply let the rest of the tab not execute data logic
-            pass 
+            pass
         else:
-        
             # --- LOGIC FOR ALL DONORS (Summary Table) ---
             # NOTE: This table *must* respect the sidebar filters, so it uses filtered_df
-            
             # 1. Calculate Donor Statistics (Grouping by Donor)
             donor_stats = filtered_df.groupby('Donor').agg(
                 Num_Schools=('UDISE', 'nunique'),
@@ -1352,40 +1352,30 @@ if uploaded_file is not None:
             # Note: Keeping the donor table sorted descending by Assessments (or by Donor name if needed)
             display_donor_stats = display_donor_stats.sort_values('Num_Assessments', ascending=False)
             
-            # Select and rename final columns
-            display_donor_stats = display_donor_stats[[
-                'Donor', 
-                'Num_Schools', 
-                'Num_Students', 
-                'Num_Assessments', 
-                'Avg Pre Score %', 
-                'Avg Post Score %', 
-                'Improvement %'
-            ]]
+            # Apply formatting
+            display_donor_stats['Avg Pre Score %'] = display_donor_stats['Avg Pre Score %'].apply(lambda x: f"{x:.1f}%")
+            display_donor_stats['Avg Post Score %'] = display_donor_stats['Avg Post Score %'].apply(lambda x: f"{x:.1f}%")
+            display_donor_stats['Improvement %'] = display_donor_stats['Improvement %'].apply(lambda x: f"{x:.1f}%")
             
+            # Rename columns for display
             display_donor_stats.columns = [
                 'Donor', 
-                'Schools', 
-                'Students', 
-                'Assessments', 
+                'Total Schools', 
+                'Total Students', 
+                'Total Assessments', 
+                'Avg Pre Score (Raw)', 
+                'Avg Post Score (Raw)', 
                 'Avg Pre %', 
                 'Avg Post %', 
                 'Improvement %'
             ]
             
-            # Apply string formatting (AFTER all calculations/renaming on the DISPLAY COPY)
-            display_donor_stats['Avg Pre %'] = display_donor_stats['Avg Pre %'].apply(lambda x: f"{x:.1f}%")
-            display_donor_stats['Avg Post %'] = display_donor_stats['Avg Post %'].apply(lambda x: f"{x:.1f}%")
-            display_donor_stats['Improvement %'] = display_donor_stats['Improvement %'].apply(lambda x: f"{x:.1f}%")
-            
-            st.subheader("Detailed Donor Analysis Table (All Donors)")
-            # This table now correctly shows a single row per donor name due to the data cleaning step
+            st.subheader("📋 Donor-wise Summary (Responds to Global Filters)")
+            # Show Raw Scores and Percentages
             st.dataframe(display_donor_stats, hide_index=True, use_container_width=True)
             st.markdown("---")
-            
-            # --- LOGIC FOR INDIVIDUAL DONOR (Specific Metrics) ---
 
-            
+            # --- LOGIC FOR INDIVIDUAL DONOR (Specific Metrics) ---
             # Calculate Metrics for the Selected Donor/All (uses the now correctly filtered donor_filtered_df)
             donor_specific_stats = {
                 'Avg Pre Score %': (donor_filtered_df['Pre_Score'].mean() / 5) * 100,
@@ -1395,7 +1385,7 @@ if uploaded_file is not None:
                 'Total Assessments': len(donor_filtered_df)
             }
             donor_specific_stats['Improvement %'] = donor_specific_stats['Avg Post Score %'] - donor_specific_stats['Avg Pre Score %']
-            
+
             # Key Metrics (Top level summary)
             col1, col2, col3, col4, col5 = st.columns(5)
             with col1:
@@ -1408,169 +1398,108 @@ if uploaded_file is not None:
                 st.metric("Total Schools", donor_specific_stats['Total Schools'])
             with col5:
                 st.metric("Total Students", donor_specific_stats['Total Students'])
-                
+            
             st.markdown("---")
-            
+
             # Breakdown by Region for the Selected Donor
-            # NOTE: This calculation uses the donor_filtered_df which is now guaranteed 
-            # to contain ALL regions for the selected donor, as it used the full, 
-            # standardized data from 'df'
+            # NOTE: This calculation uses the donor_filtered_df which is now guaranteed
+            # to respect all current filters (global + selected donor)
             st.subheader(f"Region Breakdown for {selected_donor}")
-            
             donor_region_stats = donor_filtered_df.groupby('Region').agg(
                 Num_Schools=('UDISE', 'nunique'),
                 Num_Students=('Student Id', 'nunique'),
                 Avg_Pre_Score_Raw=('Pre_Score', 'mean'),
                 Avg_Post_Score_Raw=('Post_Score', 'mean')
             ).reset_index()
-            
             donor_region_stats['Avg Pre %'] = (donor_region_stats['Avg_Pre_Score_Raw'] / 5) * 100
             donor_region_stats['Avg Post %'] = (donor_region_stats['Avg_Post_Score_Raw'] / 5) * 100
             donor_region_stats['Improvement %'] = donor_region_stats['Avg Post %'] - donor_region_stats['Avg Pre %']
             
-            # Create a copy for DISPLAY
-            display_donor_region = donor_region_stats.copy()
-            display_donor_region = display_donor_region[[
-                'Region', 
-                'Num_Schools', 
-                'Num_Students', 
-                'Avg Pre %', 
-                'Avg Post %', 
-                'Improvement %'
-            ]]
-            
+            # Format and display
+            donor_region_stats['Avg Pre %'] = donor_region_stats['Avg Pre %'].apply(lambda x: f"{x:.1f}%")
+            donor_region_stats['Avg Post %'] = donor_region_stats['Avg Post %'].apply(lambda x: f"{x:.1f}%")
+            donor_region_stats['Improvement %'] = donor_region_stats['Improvement %'].apply(lambda x: f"{x:.1f}%")
+
+            # Select and rename columns for display
+            display_donor_region = donor_region_stats[['Region', 'Num_Schools', 'Num_Students', 'Avg Pre %', 'Avg Post %', 'Improvement %']].copy()
             display_donor_region.columns = ['Region', 'Schools', 'Students', 'Avg Pre %', 'Avg Post %', 'Improvement %']
-            
-            # Apply string formatting
-            display_donor_region['Avg Pre %'] = display_donor_region['Avg Pre %'].apply(lambda x: f"{x:.1f}%")
-            display_donor_region['Avg Post %'] = display_donor_region['Avg Post %'].apply(lambda x: f"{x:.1f}%")
-            display_donor_region['Improvement %'] = display_donor_region['Improvement %'].apply(lambda x: f"{x:.1f}%")
-            
             st.dataframe(display_donor_region, hide_index=True, use_container_width=True)
 
-            # Download button for ALL DONOR SUMMARY TABLE (unchanged, using pre-calculated donor_stats)
+            # Download Button for Donor-specific analysis (uses float versions)
             st.markdown("---")
-            # Must use the float columns for download, not the display string columns
-            donor_csv_for_download = donor_stats.copy()
-            donor_csv_for_download = donor_csv_for_download.sort_values('Num_Assessments', ascending=False)
-            donor_csv_for_download.columns = [
-                'Donor', 
-                'Schools', 
-                'Students', 
-                'Assessments', 
-                'Avg_Pre_Score_Raw', 
-                'Avg_Post_Score_Raw', 
-                'Avg Pre %', 
-                'Avg Post %', 
-                'Improvement %'
-            ]
-            donor_csv = donor_csv_for_download.to_csv(index=False)
+            donor_analysis_csv = donor_region_stats.to_csv(index=False)
             st.download_button(
-                "📥 Download All Donor Analysis Data (CSV)",
-                donor_csv,
-                "donor_analysis.csv",
+                f"📥 Download {selected_donor} Region Breakdown (CSV)",
+                donor_analysis_csv,
+                f"{selected_donor}_region_analysis.csv",
                 "text/csv"
             )
-
             
     # ===== TAB 8: SUBJECT ANALYSIS (UNCHANGED) =====
     with tab8:
-        # Call the new function
         if not filtered_df.empty:
+            # The function now handles multi-select by default
             subject_stats = tab8_subject_analysis(filtered_df)
         else:
             st.info("No data to display after applying filters.")
 
-    
     # ===== DOWNLOAD SECTION (UNCHANGED) =====
     st.markdown("---")
     st.subheader("📥 Download Analysis Reports")
-    
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     
+    # Ensure all required dataframes exist before attempting to download
+    
+    # Region Analysis
     with col1:
-        region_csv = region_stats.to_csv(index=False)
-        st.download_button("Download Region Analysis", region_csv, "region_analysis.csv", "text/csv")
-    
+        if 'region_stats' in locals():
+            region_csv = region_stats.to_csv(index=False)
+            st.download_button("Download Region Analysis", region_csv, "region_analysis.csv", "text/csv")
+        else:
+            st.caption("Region data not available.")
+
+    # Instructor Analysis
     with col2:
-        # Re-sort instructor stats for a consistent download table (descending by Post Score is conventional for ranking)
-        instructor_stats_for_download = instructor_stats.sort_values('Post_Score_Pct', ascending=False)
-        instructor_csv = instructor_stats_for_download.to_csv(index=False)
-        st.download_button("Download Instructor Analysis", instructor_csv, "instructor_analysis.csv", "text/csv")
-    
+        if 'instructor_stats' in locals():
+            # Re-sort instructor stats for a consistent download table (descending by Post Score is conventional for ranking)
+            instructor_stats_for_download = instructor_stats.sort_values('Post_Score_Pct', ascending=False)
+            instructor_csv = instructor_stats_for_download.to_csv(index=False)
+            st.download_button("Download Instructor Analysis", instructor_csv, "instructor_analysis.csv", "text/csv")
+        else:
+            st.caption("Instructor data not available.")
+
+    # Grade Analysis
     with col3:
-        # Re-sort grade stats for a consistent download table (by Grade number is conventional)
-        grade_stats_for_download = grade_stats.sort_values('Parent_Class')
-        grade_csv = grade_stats_for_download.to_csv(index=False)
-        st.download_button("Download Grade Analysis", grade_csv, "grade_analysis.csv", "text/csv")
+        if 'grade_stats' in locals():
+            # Re-sort grade stats for a consistent download table (by Grade number is conventional)
+            grade_stats_for_download = grade_stats.sort_values('Parent_Class')
+            grade_csv = grade_stats_for_download.to_csv(index=False)
+            st.download_button("Download Grade Analysis", grade_csv, "grade_analysis.csv", "text/csv")
+        else:
+            st.caption("Grade data not available.")
 
+    # Program Type Analysis
     with col4:
-        # Re-sort program stats for a consistent download table (alphabetical by program type is conventional)
-        program_stats_for_download = program_stats.sort_values('Program Type')
-        program_csv = program_stats_for_download.to_csv(index=False)
-        st.download_button("Download Program Analysis", program_csv, "program_analysis.csv", "text/csv")
+        if 'program_stats' in locals():
+            # Re-sort program stats for a consistent download table (by Program Type is conventional)
+            program_stats_for_download = program_stats.sort_values('Program Type')
+            program_csv = program_stats_for_download.to_csv(index=False)
+            st.download_button("Download Program Analysis", program_csv, "program_analysis.csv", "text/csv")
+        else:
+            st.caption("Program data not available.")
             
+    # Donor Summary
     with col5:
-        # Check if school_stats exists (it's created inside the tab)
-        if 'school_stats' in locals() and school_stats is not None:
-            school_csv = school_stats.to_csv(index=False)
-            st.download_button("Download School Analysis", school_csv, "school_analysis_summary.csv", "text/csv")
+        if 'donor_stats' in locals():
+            donor_summary_csv = donor_stats.to_csv(index=False)
+            st.download_button("Download Donor Summary", donor_summary_csv, "donor_summary.csv", "text/csv")
+        else:
+            st.caption("Donor data not available.")
 
+    # Subject Analysis (Handled by the function return)
     with col6:
-        # Check if subject_stats was successfully generated in Tab 8
         if subject_stats is not None:
-            # Prepare subject stats for download (using the float columns from the start of tab 8)
-            subject_csv_final = subject_stats[[
-                'Subject', 
-                'Num_Students', 
-                'Num_Assessments', 
-                'Avg Pre Score %', 
-                'Avg Post Score %', 
-                'Improvement %'
-            ]].copy()
-            subject_csv_final.columns = ['Subject', 'Unique Students', 'Total Assessments', 'Avg Pre %', 'Avg Post %', 'Improvement %']
-            subject_csv_final = subject_csv_final.sort_values('Subject')
-            final_csv_output = subject_csv_final.to_csv(index=False)
-            st.download_button("Download Subject Analysis", final_csv_output, "subject_analysis_summary.csv", "text/csv")
-
-
-else:
-    st.info("👆 Please upload your student data Excel file to begin")
-    
-    st.markdown("---")
-    st.subheader("📋 Required Excel Columns")
-    st.markdown("""
-    Your Excel file must contain these columns:
-    
-    **Identification Columns:**
-    - `Region` - Geographic region
-    - `School Name` - Name of the school
-    - `Donor` - The donor/partner associated with the record
-    - **`Subject` - The subject name**
-    - `UDISE` - School unique ID
-    - `Student Id` - Unique student identifier
-    - `Class` - Class with section (e.g., 6-A, 7-B)
-    - `Instructor Name` - Name of instructor
-    - `Instructor Login Id` - Login ID of instructor
-    - `Program Type` - Program type code
-    - `Content Id` - Assessment/Content Identifier
-    - `Date_Post` - Assessment Date (Required for tracking unique tests)
-    
-    **Pre-Session (Questions & Answers):**
-    - `Q1`, `Q2`, `Q3`, `Q4`, `Q5` - Student responses
-    - `Q1 Answer`, `Q2 Answer`, `Q3 Answer`, `Q4 Answer`, `Q5 Answer` - Correct answers
-    
-    **Post-Session (Questions & Answers):**
-    - `Q1_Post`, `Q2_Post`, `Q3_Post`, `Q4_Post`, `Q5_Post` - Student responses
-    - `Q1_Answer_Post`, `Q2_Answer_Post`, `Q3_Answer_Post`, `Q4_Answer_Post`, `Q5_Answer_Post` - Correct answers
-    
-    ---
-    
-    **What happens when you upload:**
-    1. ✅ Data is cleaned (incomplete records removed)
-    2. ✅ Scores are calculated automatically
-    3. ✅ Program types are standardized
-    4. ✅ **Donor names are standardized to UPPERCASE (Fix for 'Adobe' vs 'ADOBE')**
-    5. ✅ Interactive dashboard is generated
-    6. ✅ Download options for all analyses
-    """)
+            # Already handled within the tab8 function, just need to confirm it ran
+            st.caption("See Tab 8 for Subject Download.")
+        else:
+            st.caption("Subject data not available.")
