@@ -880,7 +880,7 @@ if uploaded_file is not None:
         
         st.dataframe(display_stats, hide_index=True, use_container_width=True)
     
-    # ===== TAB 4: PROGRAM TYPE ANALYSIS (MODIFIED FILTER LOGIC) =====
+    # ===== TAB 4: PROGRAM TYPE ANALYSIS (MODIFIED SORTING) =====
     with tab4:
         st.header("Program Type Performance Analysis")
         
@@ -895,8 +895,8 @@ if uploaded_file is not None:
         program_stats['Post_Score_Pct'] = (program_stats['Post_Score'] / 5) * 100
         program_stats['Improvement'] = program_stats['Post_Score_Pct'] - program_stats['Pre_Score_Pct']
         
-        # Sort in ascending order of Post Score Pct for the bar chart
-        program_stats = program_stats.sort_values('Post_Score_Pct', ascending=True)
+        # MODIFIED: Sort in ascending order of PRE Score Pct
+        program_stats = program_stats.sort_values('Pre_Score_Pct', ascending=True)
         
         fig = go.Figure()
         
@@ -919,7 +919,7 @@ if uploaded_file is not None:
         ))
         
         fig.update_layout(
-            title='Program Type Performance Comparison (All Regions, Ascending by Post Score)',
+            title='Program Type Performance Comparison (All Regions, Ascending by Pre Score)',
             xaxis_title='Program Type',
             yaxis_title='Average Score (%)',
             barmode='group',
@@ -927,7 +927,8 @@ if uploaded_file is not None:
             plot_bgcolor='#2b2b2b',
             paper_bgcolor='#1e1e1e',
             font=dict(color='white'),
-            yaxis=dict(range=[0, 110], gridcolor='#404040')
+            yaxis=dict(range=[0, 110], gridcolor='#404040'),
+            xaxis=dict(type='category', gridcolor='#404040') # Added category type safety
         )
         
         st.plotly_chart(fig, use_container_width=True)
