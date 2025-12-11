@@ -114,8 +114,8 @@ def tab8_subject_analysis(df):
     subject_stats['Avg Post Score %'] = (subject_stats['Avg_Post_Score_Raw'] / 5) * 100
     subject_stats['Improvement %'] = subject_stats['Avg Post Score %'] - subject_stats['Avg Pre Score %']
     
-    # Sort in ascending order of Post Score %
-    subject_stats = subject_stats.sort_values('Avg Post Score %', ascending=True)
+    # Sort in ascending order of PRE Score % (MODIFIED)
+    subject_stats = subject_stats.sort_values('Avg Pre Score %', ascending=True)
     
     # --- Visualization: Performance (Overall) ---
     st.subheader("📈 Overall Subject Performance Comparison (Pre vs. Post)")
@@ -147,7 +147,7 @@ def tab8_subject_analysis(df):
     ))
     
     fig.update_layout(
-        title='Subject-wise Pre and Post Assessment Scores (Overall)',
+        title='Subject-wise Pre and Post Assessment Scores (Ascending by Pre Score)',
         xaxis_title='Subject',
         yaxis_title='Average Score (%)',
         hovermode='x unified',
@@ -182,7 +182,9 @@ def tab8_subject_analysis(df):
 
     # Filter data for the selected region
     region_subject_data = subject_region_stats[subject_region_stats['Region'] == selected_region_for_subject].copy()
-    region_subject_data = region_subject_data.sort_values('Post_Score_Pct', ascending=True)
+    
+    # Sort in ascending order of PRE Score % (MODIFIED)
+    region_subject_data = region_subject_data.sort_values('Pre_Score_Pct', ascending=True)
 
     fig_subj_region = go.Figure()
     
@@ -209,7 +211,7 @@ def tab8_subject_analysis(df):
     ))
     
     fig_subj_region.update_layout(
-        title=f'Subject Performance in **{selected_region_for_subject}** (Ascending by Post Score)',
+        title=f'Subject Performance in **{selected_region_for_subject}** (Ascending by Pre Score)',
         xaxis_title='Subject',
         yaxis_title='Average Score (%)',
         hovermode='x unified',
@@ -235,7 +237,9 @@ def tab8_subject_analysis(df):
 
     # Filter data for the selected subject
     subject_region_data = subject_region_stats[subject_region_stats['Subject'] == selected_subject_for_region].copy()
-    subject_region_data = subject_region_data.sort_values('Post_Score_Pct', ascending=True)
+    
+    # Sort in ascending order of PRE Score % (MODIFIED)
+    subject_region_data = subject_region_data.sort_values('Pre_Score_Pct', ascending=True)
 
     fig_region_subj = go.Figure()
     
@@ -262,7 +266,7 @@ def tab8_subject_analysis(df):
     ))
     
     fig_region_subj.update_layout(
-        title=f'Region Performance in **{selected_subject_for_region}** (Ascending by Post Score)',
+        title=f'Region Performance in **{selected_subject_for_region}** (Ascending by Pre Score)',
         xaxis_title='Region',
         yaxis_title='Average Score (%)',
         hovermode='x unified',
@@ -503,8 +507,8 @@ if uploaded_file is not None:
         region_stats['Post_Score_Pct'] = (region_stats['Post_Score'] / 5) * 100
         region_stats['Improvement'] = region_stats['Post_Score_Pct'] - region_stats['Pre_Score_Pct']
         
-        # Sort in ascending order of Post Score Pct
-        region_stats = region_stats.sort_values('Post_Score_Pct', ascending=True)
+        # Sort in ascending order of PRE Score Pct (MODIFIED)
+        region_stats = region_stats.sort_values('Pre_Score_Pct', ascending=True)
         
         # Create line chart
         fig = go.Figure()
@@ -534,7 +538,7 @@ if uploaded_file is not None:
         ))
         
         fig.update_layout(
-            title='Region-wise Performance Comparison (Ascending by Post Score)',
+            title='Region-wise Performance Comparison (Ascending by Pre Score)',
             xaxis_title='Region',
             yaxis_title='Average Score (%)',
             hovermode='x unified',
@@ -563,9 +567,8 @@ if uploaded_file is not None:
                                              sorted(filtered_df['Program Type'].unique()))
         
         prog_data = program_region_stats[program_region_stats['Program Type'] == selected_program_type]
-        # Note: This inner chart is not modified to ascending as it might break the context, 
-        # but the request was for ALL line graphs, so I will apply the sort here as well.
-        prog_data = prog_data.sort_values('Post_Score_Pct', ascending=True)
+        # Sort in ascending order of PRE Score Pct (MODIFIED)
+        prog_data = prog_data.sort_values('Pre_Score_Pct', ascending=True)
 
         fig2 = go.Figure()
         
@@ -592,7 +595,7 @@ if uploaded_file is not None:
         ))
         
         fig2.update_layout(
-            title=f'{selected_program_type} - Region-wise Performance (Ascending by Post Score)',
+            title=f'{selected_program_type} - Region-wise Performance (Ascending by Pre Score)',
             xaxis_title='Region',
             yaxis_title='Average Score (%)',
             height=400,
@@ -639,8 +642,8 @@ if uploaded_file is not None:
         # Show top N instructors
         top_n = st.slider("Number of instructors to display", 5, 20, 10)
         
-        # Get top N performers, then sort them ascending for the plot
-        top_instructors = instructor_stats_for_table.nlargest(top_n, 'Post_Score_Pct').sort_values('Post_Score_Pct', ascending=True)
+        # Get top N performers, then sort them ascending by PRE for the plot (MODIFIED)
+        top_instructors = instructor_stats_for_table.nlargest(top_n, 'Post_Score_Pct').sort_values('Pre_Score_Pct', ascending=True)
 
         fig = go.Figure()
         
@@ -667,7 +670,7 @@ if uploaded_file is not None:
         ))
         
         fig.update_layout(
-            title=f'Top {top_n} Instructors by Post-Session Performance (Ascending by Post Score)',
+            title=f'Top {top_n} Instructors by Post-Session Performance (Ascending by Pre Score)',
             xaxis_title='Instructor',
             yaxis_title='Average Score (%)',
             height=500,
@@ -812,8 +815,8 @@ if uploaded_file is not None:
         grade_stats['Post_Score_Pct'] = (grade_stats['Post_Score'] / 5) * 100
         grade_stats['Improvement'] = grade_stats['Post_Score_Pct'] - grade_stats['Pre_Score_Pct']
         
-        # Sort in ascending order of Post Score Pct
-        grade_stats = grade_stats.sort_values('Post_Score_Pct', ascending=True)
+        # Sort in ascending order of PRE Score Pct (MODIFIED)
+        grade_stats = grade_stats.sort_values('Pre_Score_Pct', ascending=True)
 
         fig = go.Figure()
         
@@ -842,7 +845,7 @@ if uploaded_file is not None:
         ))
         
         fig.update_layout(
-            title='Grade-wise Performance Comparison (Ascending by Post Score)',
+            title='Grade-wise Performance Comparison (Ascending by Pre Score)',
             xaxis_title='Grade',
             yaxis_title='Average Score (%)',
             height=500,
@@ -950,8 +953,8 @@ if uploaded_file is not None:
         # Filter data based on selection (FIX: Filter by the correctly selected REGION)
         region_data = program_region_stats[program_region_stats['Region'] == selected_region_for_prog].copy()
         
-        # Sort in ascending order of Post Score Pct for the line chart
-        region_data = region_data.sort_values('Post_Score_Pct', ascending=True)
+        # Sort in ascending order of PRE Score Pct (MODIFIED)
+        region_data = region_data.sort_values('Pre_Score_Pct', ascending=True)
 
         # Create Line/Marker Chart (Similar to Tab 1 style)
         fig_prog_region = go.Figure()
@@ -979,7 +982,7 @@ if uploaded_file is not None:
         ))
         
         fig_prog_region.update_layout(
-            title=f'Program Performance in {selected_region_for_prog} (Ascending by Post Score)',
+            title=f'Program Performance in {selected_region_for_prog} (Ascending by Pre Score)',
             xaxis_title='Program Type',
             yaxis_title='Average Score (%)',
             height=450,
