@@ -402,12 +402,14 @@ def tab8_subject_analysis(df):
     
     return subject_stats # Return for use in the main download section
 
-# ===== TAB 9: MONTH ANALYSIS (NEW) =====
+# ===== TAB 9: MONTH ANALYSIS (MODIFIED) =====
 def tab9_month_analysis(df):
     """
     Generates Month-wise Analysis including:
-    1. Bar graph of Number of assessments per month (Chronological)
+    1. Bar graph of Number of SESSIONS per month (Chronological)
     2. Line graph of Pre vs Post score % per month (Sorted by Pre-test score)
+    
+    Logic for Sessions: Unique combination of (School, Class, Content Id, Date)
     """
     st.header("Month-wise Performance Analysis")
 
@@ -425,32 +427,37 @@ def tab9_month_analysis(df):
     df_month['Month_Display'] = df_month['Date_Post'].dt.strftime('%b %Y')
 
     # ==============================================================================
-    # 1. Bar Graph: Number of Assessments per Month (Chronological Sort)
-    # Using rows (Student Id) as 'Assessments' based on standard app metrics
+    # 1. Bar Graph: Number of Sessions per Month (MODIFIED LOGIC)
+    # Logic: Group by School, Class, Content Id, Date to find unique sessions first
     # ==============================================================================
     
-    # Group by the Period object to ensure correct chronological sorting
-    assessments_per_month = df_month.groupby('Month_Sort').agg(
-        Num_Assessments=('Student Id', 'count'),
-        Month_Display=('Month_Display', 'first') # Capture the string representation
+    # Identify unique sessions
+    # We define a session as unique combination of School, Class, Content, and Date
+    unique_sessions = df_month.drop_duplicates(subset=['School Name', 'Class', 'Content Id', 'Date_Post'])
+    
+    # Group by Month_Sort using the UNIQUE SESSIONS dataframe
+    sessions_per_month = unique_sessions.groupby('Month_Sort').agg(
+        Num_Sessions=('Date_Post', 'count'), # Counting rows here counts unique sessions
+        Month_Display=('Month_Display', 'first')
     ).reset_index()
 
     # Sort strictly chronologically
-    assessments_per_month = assessments_per_month.sort_values('Month_Sort')
+    sessions_per_month = sessions_per_month.sort_values('Month_Sort')
 
-    st.subheader("📊 Number of Assessments per Month")
+    st.subheader("📊 Number of Sessions per Month")
+    st.markdown("*(A 'Session' is defined as a unique combination of School, Class, Content, and Date)*")
 
     fig_bar = px.bar(
-        assessments_per_month,
+        sessions_per_month,
         x='Month_Display',
-        y='Num_Assessments',
-        text='Num_Assessments',
+        y='Num_Sessions',
+        text='Num_Sessions',
         color_discrete_sequence=['#9b59b6']
     )
 
     fig_bar.update_layout(
         xaxis_title="Month",
-        yaxis_title="Number of Assessments",
+        yaxis_title="Number of Sessions",
         plot_bgcolor='#2b2b2b',
         paper_bgcolor='#1e1e1e',
         font=dict(color='white'),
@@ -463,6 +470,7 @@ def tab9_month_analysis(df):
 
     # ==============================================================================
     # 2. Line Graph: Pre vs Post Score % (Sorted by Pre-Test Score)
+    # This remains based on student averages to accurately reflect performance
     # ==============================================================================
     
     # Calculate scores per month
